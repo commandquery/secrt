@@ -32,7 +32,7 @@ jobs:
         run: |
           ext=""
           [[ "$GOOS" == "windows" ]] && ext=".exe"
-          go build -o secret_${GOOS}_${GOARCH}${ext} .
+          go build -o secret_${GOOS}_${GOARCH}${ext} ./cmd/secret
 
       - uses: softprops/action-gh-release@v2
         with:
