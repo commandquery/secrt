@@ -442,16 +442,6 @@ func main() {
 
 	if config.Version != ConfigVersion {
 		panic(fmt.Errorf("unexpected config version: %d", config.Version))
-		//fmt.Fprintln(os.Stderr, "Upgrading to version", secret.ConfigVersion)
-		//err = upgrade(config)
-		//if err != nil {
-		//	exit(1, err)
-		//}
-		//
-		//err = config.Save()
-		//if err != nil {
-		//	exit(1, err)
-		//}
 	}
 
 	command := args[1]
@@ -459,7 +449,7 @@ func main() {
 
 	if !config.Stored && command != "init" {
 		fmt.Fprintf(os.Stderr, "you need to initialise your keys before you can use `secret %s` using:\n", command)
-		fmt.Fprintf(os.Stderr, "    secret init\n")
+		fmt.Fprintf(os.Stderr, "    secret init email@example.com\n")
 		os.Exit(1)
 	}
 

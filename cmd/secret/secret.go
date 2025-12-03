@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
 
 	"github.com/google/uuid"
@@ -111,16 +112,18 @@ func GetSecretStore() (string, error) {
 		return secretDirectory, nil
 	}
 
-	home, err := os.UserHomeDir()
+	home, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
 	}
 
-	secretDirectory = home + "/.config/secret"
+	secretDirectory = filepath.Join(home, "secret")
 	err = os.MkdirAll(secretDirectory, 0700)
 	if err != nil {
 		return "", err
 	}
+
+	fmt.Println(secretDirectory)
 
 	return secretDirectory, nil
 }
