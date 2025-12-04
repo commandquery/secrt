@@ -13,7 +13,7 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
-func usage() {
+func usage(msg ...any) {
 	fmt.Fprintln(os.Stderr,
 		`Secret is a simple command for exchanging sensitive data over public networks
 such as email or Discord, and saving it to your home directory.
@@ -28,7 +28,7 @@ Options:
 General Commands:
   init [--force] <id>          - create (or replace) your public key and your ID.
   key [-n]                     - show your public key, so you can send it to your peeps. -n don't include help text.
-  add <peerID>                 - add a public key sent by a friend whose ID is <peerID>
+  add <peerID> <token>         - add a public key <token> sent by a friend whose ID is <peerID>
   send <peerID> [file]         - encrypt file or stdin for friend <peerID> and print it to stdout
   decrypt <peerID> [file]      - decrypt stdin from <peerID> and print it to stdout
 
@@ -38,6 +38,12 @@ File Commands:
   cat <name>                   - print the decrypted contents of the previously saved file <name>
   rm <name>                    - Delete the secret called <name>. Forever!
   ls                           - List files that have been previously saved.`)
+
+	if len(msg) > 0 {
+		fmt.Println()
+		fmt.Println(msg)
+		fmt.Println()
+	}
 
 	os.Exit(1)
 }
@@ -99,21 +105,17 @@ func unformat(b64 []byte) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(s64)
 }
 
-func printPublicKey(config *Configuration, prefix string) error {
+func getPublicKey(config *Configuration, prefix string) (string, error) {
 	entry := Peer{Version: 0, PeerID: config.UserID, PublicKey: config.PublicKey}
 
 	bytes, err := json.Marshal(entry)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	if err := format(prefix, bytes); err != nil {
-		return err
-	}
+	b64 := base64.StdEncoding.EncodeToString(bytes)
 
-	fmt.Println(prefix)
-
-	return nil
+	return b64, nil
 }
 
 func cmdInit(config *Configuration, args []string) error {
@@ -148,34 +150,25 @@ func cmdKey(config *Configuration, args []string) error {
 		decorate = false
 	}
 
-	if decorate {
-		fmt.Println()
-		fmt.Printf("secret add %s << EOF\n", config.UserID)
-	}
-
-	err := printPublicKey(config, "  ")
+	b64, err := getPublicKey(config, "  ")
 
 	if decorate {
-		fmt.Println("EOF")
-		fmt.Println()
+		fmt.Printf("secret add %s %s\n", config.UserID, b64)
+	} else {
+		fmt.Println(b64)
 	}
 
 	return err
 }
 
 func cmdAdd(config *Configuration, args []string) error {
-	if len(args) != 1 {
-		usage()
+	if len(args) != 2 {
+		usage("add <peer> <token>")
 	}
 
 	peerId := strings.ToLower(args[0])
 
-	entryBytes, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		return err
-	}
-
-	bytes, err := unformat(entryBytes)
+	bytes, err := unformat([]byte(args[1]))
 	if err != nil {
 		return err
 	}

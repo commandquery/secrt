@@ -13,7 +13,7 @@ Options:
 General Commands:
     init [--force] <id>          - create (or replace) your public key and your ID.
     key [-n]                     - show your public key, so you can send it to your peeps. -n don't include help text.
-    add <peerID>                 - add a public key sent by a friend whose ID is <peerID>
+    add <peerID> <token>         - add a public key sent by a friend whose ID is <peerID>
     send <peerID> [file]         - encrypt file or stdin for friend <peerID> and print it to stdout
     decrypt <peerID> [file]      - decrypt stdin from <peerID> and print it to stdout
 

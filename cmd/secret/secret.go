@@ -123,8 +123,6 @@ func GetSecretStore() (string, error) {
 		return "", err
 	}
 
-	fmt.Println(secretDirectory)
-
 	return secretDirectory, nil
 }
 
