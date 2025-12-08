@@ -54,15 +54,6 @@ type User struct {
 	Messages  []*Message `json:"-"` // messages are transient, at least for now.
 }
 
-func MustDecode(b64 string) []byte {
-	bytes, err := base64.StdEncoding.DecodeString(b64)
-	if err != nil {
-		panic(err)
-	}
-
-	return bytes
-}
-
 // ejectMessages ejects old messages. User MUST be locked before calling ejectMessages.
 func (user *User) ejectMessages() {
 	cutoff := time.Now().Add(-MessageExpiry)

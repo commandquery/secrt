@@ -116,9 +116,9 @@ func cmdSend(endpoint *Endpoint, args []string) error {
 	}
 
 	// FIXME: better handling of URL
-	url := endpoint.URL + "send/" + recipient
+	endpointURL := endpoint.URL + "send/" + recipient
 
-	req, err := http.NewRequest("POST", url, bytes.NewReader(ciphertext))
+	req, err := http.NewRequest("POST", endpointURL, bytes.NewReader(ciphertext))
 	if err != nil {
 		return err
 	}
@@ -141,12 +141,13 @@ func cmdSend(endpoint *Endpoint, args []string) error {
 }
 
 // List the secrets on the server.
+// TODO: include -l option to get the long format
 func cmdLs(endpoint *Endpoint, args []string) error {
 
 	// FIXME: better handling of URL
-	url := endpoint.URL + "inbox"
+	endpointURL := endpoint.URL + "inbox"
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", endpointURL, nil)
 	if err != nil {
 		return err
 	}
@@ -216,9 +217,9 @@ func printLongInbox(inbox Inbox) {
 func cmdGet(endpoint *Endpoint, args []string) error {
 
 	// FIXME: better handling of URL
-	url := endpoint.URL + "message/" + args[0]
+	endpointURL := endpoint.URL + "message/" + args[0]
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", endpointURL, nil)
 	if err != nil {
 		return err
 	}

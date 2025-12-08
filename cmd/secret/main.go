@@ -34,10 +34,6 @@ func exit(code int, err error) {
 	os.Exit(code)
 }
 
-func getSecretFile(config *Client) (string, error) {
-	return config.Store + "/keys", nil
-}
-
 func cmdEnrol(config *Client, args []string) error {
 
 	flags := flag.NewFlagSet("init", flag.ContinueOnError)
@@ -64,7 +60,7 @@ func cmdEnrol(config *Client, args []string) error {
 	return config.Save()
 }
 
-func cmdKey(server *Endpoint, args []string) error {
+func cmdKey(server *Endpoint) error {
 	b64 := base64.StdEncoding.EncodeToString(server.PublicKey)
 	fmt.Println(b64)
 	return nil
@@ -196,8 +192,8 @@ func main() {
 	args = args[2:]
 
 	if !config.Stored && command != "init" {
-		fmt.Fprintf(os.Stderr, "you need to initialise your keys before you can use `secret %s` using:\n", command)
-		fmt.Fprintf(os.Stderr, "    secret init email@example.com\n")
+		fmt.Fprintf(os.Stderr, "you need to enrol before you can use `secret`:\n", command)
+		fmt.Fprintf(os.Stderr, "    secret enrol email@example.com https://secret.example.com/\n")
 		os.Exit(1)
 	}
 
@@ -209,7 +205,7 @@ func main() {
 
 	case "key":
 		server := config.Servers[0]
-		err = cmdKey(server, args)
+		err = cmdKey(server)
 
 	case "send":
 		server := config.Servers[0]
