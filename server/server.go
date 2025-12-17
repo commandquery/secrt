@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"bytes"
@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/commandquery/secret"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/nacl/box"
 )
@@ -35,27 +36,28 @@ type SecretServer struct {
 	Path       string           `json:"-"` // where this config was loaded
 	PrivateKey []byte           `json:"privateKey"`
 	PublicKey  []byte           `json:"publicKey"`
-	Users      map[string]*User `json:"peers"` // TODO: the field should be renamed Peers, but needs to move to a new package first.
+	Users      map[string]*Peer `json:"peers"` // TODO: the field should be renamed Peers, but needs to move to a new package first.
 	Skew       int64            `json:"skew"`  // allowable time skew for authentication nonce, seconds.
+	AutoEnrol  string           `json:"-"`     // Allow auto-enrolment? (taken from environment)
 }
 
 type Message struct {
 	ID        uuid.UUID
-	Sender    *User
+	Sender    *Peer
 	Timestamp time.Time
 	Data      []byte
 }
 
-// User is a peer who's enrolled in this server instance.
-type User struct {
+// Peer is a peer who's enrolled in this server instance.
+type Peer struct {
 	lock      sync.Mutex
 	PeerID    string     `json:"peerID"`
 	PublicKey []byte     `json:"publicKey"`
 	Messages  []*Message `json:"-"` // messages are transient, at least for now.
 }
 
-// ejectMessages ejects old messages. User MUST be locked before calling ejectMessages.
-func (user *User) ejectMessages() {
+// ejectMessages ejects old messages. Peer MUST be locked before calling ejectMessages.
+func (user *Peer) ejectMessages() {
 	cutoff := time.Now().Add(-MessageExpiry)
 	for index, message := range user.Messages {
 		if message.Timestamp.After(cutoff) {
@@ -72,7 +74,7 @@ func (user *User) ejectMessages() {
 }
 
 // NewSecretServer returns a new SecretServer with a unique private and public key.
-func NewSecretServer(path string) *SecretServer {
+func NewSecretServer(path string, autoEnrol string) *SecretServer {
 	pub, priv, err := box.GenerateKey(rand.Reader)
 	if err != nil {
 		panic(err)
@@ -82,8 +84,9 @@ func NewSecretServer(path string) *SecretServer {
 		Path:       path,
 		PrivateKey: priv[:],
 		PublicKey:  pub[:],
+		AutoEnrol:  autoEnrol,
 		Skew:       5,
-		Users:      make(map[string]*User),
+		Users:      make(map[string]*Peer),
 	}
 
 	return server
@@ -121,12 +124,12 @@ func (server *SecretServer) Save() error {
 	return enc.Encode(server)
 }
 
-func (server *SecretServer) GetUser(uid string) (user *User, ok bool) {
+func (server *SecretServer) GetUser(uid string) (user *Peer, ok bool) {
 	user, ok = server.Users[uid]
 	return
 }
 
-func (server *SecretServer) Authenticate(r *http.Request) (*User, error) {
+func (server *SecretServer) Authenticate(r *http.Request) (*Peer, error) {
 	sig := r.Header.Get("Signature")
 	if sig == "" {
 		return nil, errors.New("missing signature header")
@@ -138,7 +141,7 @@ func (server *SecretServer) Authenticate(r *http.Request) (*User, error) {
 		return nil, fmt.Errorf("invalid signature encoding: %w", err)
 	}
 
-	var signature Signature
+	var signature secret.Signature
 	if err = json.Unmarshal(js, &signature); err != nil {
 		return nil, fmt.Errorf("invalid signature: %w", err)
 	}
@@ -159,7 +162,7 @@ func (server *SecretServer) Authenticate(r *http.Request) (*User, error) {
 	copy(nonce[:], ciphertext[1:25])
 
 	var out []byte
-	plaintext, ok := box.Open(out, ciphertext[25:], &nonce, To32(peer.PublicKey), To32(server.PrivateKey))
+	plaintext, ok := box.Open(out, ciphertext[25:], &nonce, secret.To32(peer.PublicKey), secret.To32(server.PrivateKey))
 	if !ok {
 		return nil, fmt.Errorf("unable to authenticate message from %s", peer.PeerID)
 	}
@@ -179,22 +182,26 @@ func (server *SecretServer) Authenticate(r *http.Request) (*User, error) {
 	return peer, nil
 }
 
-func cmdServer() error {
+func StartServer(configPath, pathPrefix, autoEnrol string) error {
 	mux := http.NewServeMux()
 
-	server, err := Load(Config.ServerConfigPath)
+	server, err := Load(configPath)
 	if errors.Is(err, os.ErrNotExist) {
-		server = NewSecretServer(Config.ServerConfigPath)
+		server = NewSecretServer(configPath, autoEnrol)
 		if err = server.Save(); err != nil {
-			exit(1, fmt.Errorf("failed to init server: %w", err))
+			return fmt.Errorf("failed to init server: %w", err)
+		}
+	} else {
+		if err != nil {
+			return err
 		}
 	}
 
-	mux.HandleFunc("POST "+Config.PathPrefix+"enrol/{peer}", server.handleEnrol)
-	mux.HandleFunc("POST "+Config.PathPrefix+"send/{recipient}", server.handleSend)
-	mux.HandleFunc("GET "+Config.PathPrefix+"inbox", server.handleInbox)
-	mux.HandleFunc("GET "+Config.PathPrefix+"publickey/{peer}", server.handlePublicKey)
-	mux.HandleFunc("GET "+Config.PathPrefix+"message/{id}", server.handleMessage)
+	mux.HandleFunc("POST "+pathPrefix+"enrol/{peer}", server.handleEnrol)
+	mux.HandleFunc("POST "+pathPrefix+"share/{recipient}", server.handleShare)
+	mux.HandleFunc("GET "+pathPrefix+"inbox", server.handleInbox)
+	mux.HandleFunc("GET "+pathPrefix+"publickey/{peer}", server.handlePublicKey)
+	mux.HandleFunc("GET "+pathPrefix+"message/{id}", server.handleMessage)
 
 	log.Println("listening on :8080")
 	return http.ListenAndServe(":8080", mux)
@@ -213,7 +220,7 @@ func (server *SecretServer) enrolUser(peerID string, peerKey []byte) error {
 		return fmt.Errorf("cannot replace existing peer")
 	}
 
-	user := &User{
+	user := &Peer{
 		PeerID:    peerID,
 		PublicKey: peerKey,
 	}
@@ -230,7 +237,7 @@ func (server *SecretServer) enrolUser(peerID string, peerKey []byte) error {
 // Enrollment accepts a key from the client, and returns the server key.
 func (server *SecretServer) handleEnrol(w http.ResponseWriter, r *http.Request) {
 
-	if Config.AutoEnrol == "false" {
+	if server.AutoEnrol == "false" {
 		http.Error(w, "Enrolment disabled", http.StatusForbidden)
 		return
 	}
@@ -248,7 +255,7 @@ func (server *SecretServer) handleEnrol(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if Config.AutoEnrol == "approve" {
+	if server.AutoEnrol == "approve" {
 		log.Printf("approval requested for peer %s %s", peerID, base64.StdEncoding.EncodeToString(peerKey))
 		w.Header().Set("Content-Type", "application/octet-stream")
 		w.WriteHeader(http.StatusAccepted)
@@ -266,7 +273,7 @@ func (server *SecretServer) handleEnrol(w http.ResponseWriter, r *http.Request) 
 	_, _ = w.Write(server.PublicKey)
 }
 
-func (server *SecretServer) handleSend(w http.ResponseWriter, r *http.Request) {
+func (server *SecretServer) handleShare(w http.ResponseWriter, r *http.Request) {
 	sender, err := server.Authenticate(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
@@ -309,6 +316,14 @@ func (server *SecretServer) handleSend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	recipient.Messages = append(recipient.Messages, newMessage)
+
+	resp := secret.ShareResponse{
+		ID: newMessage.ID,
+	}
+
+	log.Println("shared message", newMessage.ID)
+	// Tell the sender the message ID
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 func (server *SecretServer) handleInbox(w http.ResponseWriter, r *http.Request) {
@@ -327,12 +342,12 @@ func (server *SecretServer) handleInbox(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	inbox := &Inbox{
-		Messages: make([]InboxMessage, 0, len(peer.Messages)),
+	inbox := &secret.Inbox{
+		Messages: make([]secret.InboxMessage, 0, len(peer.Messages)),
 	}
 
 	for _, msg := range peer.Messages {
-		inbox.Messages = append(inbox.Messages, InboxMessage{
+		inbox.Messages = append(inbox.Messages, secret.InboxMessage{
 			ID:        msg.ID,
 			Sender:    msg.Sender.PeerID,
 			Timestamp: msg.Timestamp.Unix(),

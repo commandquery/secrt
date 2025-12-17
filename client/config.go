@@ -1,4 +1,4 @@
-package main
+package client
 
 //
 // This library contains all the code necessary to parse a user's
@@ -16,13 +16,11 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/nacl/box"
 )
-
-var DefaultSecretLocation = os.Getenv("SECRETS_DIR")
 
 // Peer contains information about other users.
 type Peer struct {
@@ -33,13 +31,13 @@ type Peer struct {
 // ConfigVersion is current default version of the configuration file.
 const ConfigVersion = 1
 
-// Client represents the client configuration file.
-type Client struct {
-	Version       int         `json:"version"`       // Config file version
-	DefaultPeerID string      `json:"defaultPeerID"` // Default peer ID
-	Store         string      `json:"-"`             // Location of secrets store
-	Stored        bool        `json:"-"`             // Indicates if the config came from disk (not in JSON)
-	Servers       []*Endpoint `json:"servers"`       // 0th server is the default server
+// Config represents the client configuration file.
+type Config struct {
+	Version    int                  `json:"version"` // Config file version
+	Store      string               `json:"-"`       // Location of secrets store
+	Stored     bool                 `json:"-"`       // Indicates if the config came from disk (not in JSON)
+	Servers    map[string]*Endpoint `json:"servers"` // 0th server is the default server
+	Properties *Properties          `json:"properties"`
 }
 
 // Endpoint represents a single server as seen from a Client.
@@ -53,31 +51,25 @@ type Endpoint struct {
 	Peers      map[string]*Peer `json:"peers"`      // Contains info about other users
 }
 
-// To32 converts a slice to a 32 byte array for use with nacl.
-func To32(bytes []byte) *[32]byte {
-	var result [32]byte
-	if copy(result[:], bytes) != 32 {
-		panic(fmt.Errorf("Attempted to create non-32 bit key"))
-	}
-
-	return &result
-}
-
 // LoadSecretConfiguration loads the secret configuration, if there is one.
 // Returns an empty object (with Stored == false) if no configuration exists.
-func LoadSecretConfiguration(store string) (*Client, error) {
-	secretFile := store + "/keys"
-	secretContents, err := os.ReadFile(secretFile)
+func LoadSecretConfiguration(store string) (*Config, error) {
+	secretContents, err := os.ReadFile(store)
 	if os.IsNotExist(err) {
 		// return an empty object.
-		return &Client{Version: ConfigVersion, Stored: false, Store: store}, nil
+		return &Config{
+			Version:    ConfigVersion,
+			Stored:     false,
+			Store:      store,
+			Servers:    make(map[string]*Endpoint),
+			Properties: &Properties{}}, nil
 	}
 
 	if err != nil {
 		return nil, err
 	}
 
-	config := Client{Stored: true, Store: store}
+	config := Config{Stored: true, Store: store}
 	err = json.Unmarshal(secretContents, &config)
 	if err != nil {
 		return nil, err
@@ -92,8 +84,8 @@ func LoadSecretConfiguration(store string) (*Client, error) {
 
 // Save a secret configuration. This is saved to the location from which it
 // was loaded.
-func (config *Client) Save() error {
-	secretFile := config.Store + "/keys"
+func (config *Config) Save() error {
+	secretFile := config.Store
 	contents, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return err
@@ -105,29 +97,8 @@ func (config *Client) Save() error {
 	return err
 }
 
-// GetSecretStore returns the filename where the secret configuration is stored.
-func GetSecretStore() (string, error) {
-	secretDirectory := DefaultSecretLocation
-	if secretDirectory != "" {
-		return secretDirectory, nil
-	}
-
-	home, err := os.UserConfigDir()
-	if err != nil {
-		return "", err
-	}
-
-	secretDirectory = filepath.Join(home, "secret")
-	err = os.MkdirAll(secretDirectory, 0700)
-	if err != nil {
-		return "", err
-	}
-
-	return secretDirectory, nil
-}
-
 // GetFileStore returns the path to the named file.
-func (config *Client) GetFileStore(filename string) (string, error) {
+func (config *Config) GetFileStore(filename string) (string, error) {
 	uuname := uuid.NewSHA1(uuid.MustParse("F41E83C3-B3EE-4194-8B0F-5D1932041A86"), []byte(filename)).String()
 
 	// Create the directory if we need to.
@@ -179,7 +150,7 @@ func (endpoint *Endpoint) enrol() error {
 }
 
 // AddServer adds a new server to the config, and generates a new keypair for that server.
-func (config *Client) AddServer(serverURL string) error {
+func (config *Config) AddServer(peerID, serverURL string) error {
 
 	public, private, err := box.GenerateKey(rand.Reader)
 	if err != nil {
@@ -188,7 +159,7 @@ func (config *Client) AddServer(serverURL string) error {
 
 	endpoint := &Endpoint{
 		URL:        serverURL,
-		PeerID:     config.DefaultPeerID,
+		PeerID:     peerID,
 		PrivateKey: private[:],
 		PublicKey:  public[:],
 		Peers:      make(map[string]*Peer),
@@ -199,6 +170,24 @@ func (config *Client) AddServer(serverURL string) error {
 		return fmt.Errorf("unable to fetch key from server %s: %w", serverURL, err)
 	}
 
-	config.Servers = append(config.Servers, endpoint)
+	config.Servers[serverURL] = endpoint
+
+	if config.Properties.Server == "" {
+		config.Properties.Server = serverURL
+	}
+	return nil
+}
+
+// Set a property. The expression is of the form "property=value".
+func (config *Config) Set(expression string) error {
+	namevalue := strings.Split(expression, "=")
+	if len(namevalue) != 2 {
+		return fmt.Errorf("invalid expression: %s", expression)
+	}
+
+	if err := config.Properties.Set(namevalue[0], namevalue[1]); err != nil {
+		return fmt.Errorf("unable to set %s: %w", namevalue[0], err)
+	}
+
 	return nil
 }

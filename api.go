@@ -1,4 +1,4 @@
-package main
+package secret
 
 import "github.com/google/uuid"
 
@@ -17,4 +17,9 @@ type InboxMessage struct {
 type Signature struct {
 	Peer string `json:"peer"`
 	Sig  []byte `json:"sig"`
+}
+
+// ShareResponse is the message ID returned by the server after a share.
+type ShareResponse struct {
+	ID uuid.UUID `json:"id"`
 }

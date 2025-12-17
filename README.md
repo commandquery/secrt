@@ -11,10 +11,12 @@ General usage:
     secret [options] command ...
 
 Options:
+
     -f <secretdir>                - store (and retrieve) configuration from this directory
 
 Commands:
-    enrol [--force] <id> <server> - create a key pair, and send the public key to the given Secret server.
-    send <peerID> [file]          - send file (or stdin) to the given peer.
-    ls                            - list messages waiting for you
-    get <msgid>                   - print the message with the given ID to stdout.
+
+    secret enrol [--force] <id> <server> - create a key pair, and send the public key to the given Secret server.
+    secret send <peerID> [file]          - send file (or stdin) to the given peer.
+    secret ls                            - list messages waiting for you
+    secret get <msgid>                   - print the message with the given ID to stdout.
