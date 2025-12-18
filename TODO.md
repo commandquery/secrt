@@ -1,6 +1,7 @@
 # not-so-secret TODO
 
 - [X] "-f conf" should point directly to a file, not a dir. (alice.secrt, bob.secrt)
+- [ ] I think a missing peer on the server causes a null pointer panic
 - [ ] rename "secret" to "secrt"
 - [ ] a library version that can be used in your own code to generate and send secrets would be great
 - [ ] when a file is sent, also send a filename and size

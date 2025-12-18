@@ -17,6 +17,6 @@ Options:
 Commands:
 
     secret enrol [--force] <id> <server> - create a key pair, and send the public key to the given Secret server.
-    secret send <peerID> [file]          - send file (or stdin) to the given peer.
+    secret share <peerID> [file]         - share file (or stdin) to the given peer.
     secret ls                            - list messages waiting for you
     secret get <msgid>                   - print the message with the given ID to stdout.

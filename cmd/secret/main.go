@@ -127,6 +127,7 @@ func main() {
 		err = cmdKey(endpoint)
 
 	case "share":
+	case "send":
 		err = client.CmdShare(config, endpoint, args)
 		if err == nil {
 			config.Save() // TODO: should only happen if a peer was added. FIXME: no error check.

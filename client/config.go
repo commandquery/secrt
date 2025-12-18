@@ -56,13 +56,16 @@ type Endpoint struct {
 func LoadSecretConfiguration(store string) (*Config, error) {
 	secretContents, err := os.ReadFile(store)
 	if os.IsNotExist(err) {
-		// return an empty object.
+		// return an empty, configured object.
 		return &Config{
-			Version:    ConfigVersion,
-			Stored:     false,
-			Store:      store,
-			Servers:    make(map[string]*Endpoint),
-			Properties: &Properties{}}, nil
+			Version: ConfigVersion,
+			Stored:  false,
+			Store:   store,
+			Servers: make(map[string]*Endpoint),
+			Properties: &Properties{
+				AcceptPeers: true,
+				Metadata:    true,
+			}}, nil
 	}
 
 	if err != nil {
