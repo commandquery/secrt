@@ -1,6 +1,7 @@
 # not-so-secret TODO
 
-- [ ] change emersion secret deployment to use "secrt" instead
+- [ ] send secrets to multiple people
+- [ ] deploy as an actual service (kill the version running at emersion)
 - [ ] protect the private key on the client (eg with a passphrase)
 - [ ] support for multiple servers (eg, -s server)
 - [ ] server-side struct mutations aren't generally protected by a mutex.

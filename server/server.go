@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/commandquery/secret"
+	"github.com/commandquery/secrt"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/nacl/box"
 )
@@ -71,7 +71,7 @@ func NewSecretServer(path string, autoEnrol string) *SecretServer {
 	return server
 }
 
-func Load(path string) (*SecretServer, error) {
+func LoadServerState(path string) (*SecretServer, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -370,13 +370,6 @@ func WriteError(w http.ResponseWriter, err error) {
 	}
 }
 
-//func getMessageWithError(w http.ResponseWriter, peer *Peer, id string) (*Message, error) {
-//	selected, err := peer.getMessage(id)
-//	if err == nil {
-//		return selected, nil
-//	}
-//}
-
 func (server *SecretServer) handleGetMessage(w http.ResponseWriter, r *http.Request) {
 	peer, err := server.Authenticate(r)
 	if err != nil {
@@ -425,12 +418,16 @@ func (server *SecretServer) handleDeleteMessage(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusOK)
 }
 
-func StartServer(configPath, pathPrefix, autoEnrol string) error {
+func StartServer() error {
+	if err := initConfig(); err != nil {
+		secrt.Exit(1, err)
+	}
+
 	mux := http.NewServeMux()
 
-	server, err := Load(configPath)
+	server, err := LoadServerState(Config.ServerConfigPath)
 	if errors.Is(err, os.ErrNotExist) {
-		server = NewSecretServer(configPath, autoEnrol)
+		server = NewSecretServer(Config.ServerConfigPath, Config.AutoEnrol)
 		if err = server.Save(); err != nil {
 			return fmt.Errorf("failed to init server: %w", err)
 		}
@@ -439,6 +436,8 @@ func StartServer(configPath, pathPrefix, autoEnrol string) error {
 			return err
 		}
 	}
+
+	pathPrefix := Config.PathPrefix
 
 	mux.HandleFunc("POST "+pathPrefix+"enrol/{peer}", server.handleEnrol)
 

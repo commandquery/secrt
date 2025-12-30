@@ -1,9 +1,7 @@
-package main
+package server
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 
@@ -33,26 +31,4 @@ func initConfig() error {
 	}
 
 	return nil
-}
-
-// GetStoreLocation returns the filename where the secret configuration will be stored.
-// If necessary, a store directory will be created.
-func GetStoreLocation() string {
-	storeLocation := Config.Store
-	if storeLocation != "" {
-		return storeLocation
-	}
-
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		panic(err)
-	}
-
-	storeDir := filepath.Join(configDir, "secrt")
-	if err = os.MkdirAll(storeDir, 0700); err != nil {
-		panic(err)
-	}
-
-	storeLocation = filepath.Join(storeDir, "store.json")
-	return storeLocation
 }

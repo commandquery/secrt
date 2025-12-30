@@ -1,4 +1,4 @@
-module github.com/commandquery/secret
+module github.com/commandquery/secrt
 
 go 1.24.0
 

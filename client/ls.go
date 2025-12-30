@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	secrt "github.com/commandquery/secret"
+	secrt "github.com/commandquery/secrt"
 )
 
 // We use the inbox message and metadata to generate a List entry which is then

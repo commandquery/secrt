@@ -3,6 +3,7 @@ package secrt
 import (
 	_ "embed"
 	"fmt"
+	"os"
 )
 
 //go:embed README.md
@@ -16,4 +17,23 @@ func To32(bytes []byte) *[32]byte {
 	}
 
 	return &result
+}
+
+func Usage(msg ...any) {
+
+	_, _ = os.Stderr.WriteString(README)
+	fmt.Println()
+
+	if len(msg) > 0 {
+		fmt.Println()
+		fmt.Println(msg...)
+		fmt.Println()
+	}
+
+	os.Exit(1)
+}
+
+func Exit(code int, err error) {
+	_, _ = fmt.Fprintln(os.Stderr, err)
+	os.Exit(code)
 }
