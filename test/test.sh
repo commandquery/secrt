@@ -25,8 +25,8 @@ sleep 1
 # Enrol alice and bob
 #
 echo "--- secrt enrol"
-secrt -f alice.json enrol alice@example.com http://localhost:8080/
-secrt -f bob.json enrol bob@example.com http://localhost:8080/
+secrt -f alice.json enrol --store=clear alice@example.com http://localhost:8080/
+secrt -f bob.json enrol --store=clear bob@example.com http://localhost:8080/
 
 #
 # Send a message from alice to bob
@@ -53,18 +53,27 @@ MSGID=$(secrt -f bob.json send alice@example.com ./README.md)
 # Enrol Charlie, but disable acceptPeers.
 #
 echo "--- secrt ls (acceptPeers=false)"
-secrt -f charlie.json enrol charlie@example.com http://localhost:8080/
+secrt -f charlie.json enrol --store=clear charlie@example.com http://localhost:8080/
 secrt -f charlie.json set acceptPeers=false
-echo "hello" | secrt -f alice.json send charlie@example.com
+ALICEMSG=$(echo "hello" | secrt -f alice.json send charlie@example.com)
 secrt -f charlie.json ls
 secrt -f charlie.json ls -l
 
 #
-# Since Charlie doesn't accept peers, he shouldn't be able to send to alice.
+# Since Charlie doesn't accept peers, she shouldn't be able to send to alice.
 #
 echo "--- secrt send (acceptPeers=false)"
 if secrt -f alice.json send charlie@example.com ./secrt 2> /dev/null; then
   echo "secrt send should have failed!" 1>&2
+  exit 1
+fi
+
+#
+# Since Charlie doesn't accept peers, she shouldn't be able to receive from alice.
+#
+echo "--- secrt get (acceptPeers=false)"
+if secrt -f charlie.json get $ALICEMSG 2> /dev/null; then
+  echo "secrt get should have failed!" 1>&2
   exit 1
 fi
 

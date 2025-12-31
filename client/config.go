@@ -27,6 +27,7 @@ type KeyStoreType string
 const (
 	KeyStoreClear    KeyStoreType = "clear"
 	KeyStorePassword KeyStoreType = "password"
+	KeyStorePlatform KeyStoreType = "platform" // Platform keystore. Uses zalando/go-keyring.
 )
 
 // Peer contains information about other users.
@@ -49,9 +50,9 @@ type Config struct {
 
 // PrivateKeyEnvelope is a concrete envelope around an abstract PrivateKeyStore interface.
 type PrivateKeyEnvelope struct {
-	Type       KeyStoreType    `json:"type"`
-	Properties json.RawMessage `json:"properties"`
-	Envelope   PrivateKeyStore `json:"-"` // The abstract envelope itself.
+	Type       KeyStoreType    `json:"type"`       // The dynamic KeyStore type, used for marshal/unmarshal
+	Properties json.RawMessage `json:"properties"` // The KeyStore is marshalled into this field.
+	keyStore   PrivateKeyStore // The KeyStore is instantiated into this field.
 }
 
 // PrivateKeyStore provides a mechanism whereby a private key can be wrapped
@@ -184,24 +185,41 @@ func (endpoint *Endpoint) enrol() error {
 	return nil
 }
 
-// AddServer adds a new server to the config, and generates a new, cleartext keypair for that server.
+func NewKeyStore(storeType KeyStoreType, privateKey []byte) (PrivateKeyStore, error) {
+	switch storeType {
+	case KeyStoreClear:
+		return NewClearKeyStore(privateKey), nil
+	case KeyStorePassword:
+		// TODO
+		return nil, fmt.Errorf("unsupported key store type: %s", storeType)
+	case KeyStorePlatform:
+		// TODO
+		return nil, fmt.Errorf("unsupported key store type: %s", storeType)
+	default:
+		return nil, fmt.Errorf("unsupported key store type: %s", storeType)
+
+	}
+}
+
+// AddEndpoint adds a new server to the config, and generates a new, cleartext keypair for that server.
 // TODO: shouldn't default to a clear key store; possibly needs the key to be passed in.
-func (config *Config) AddServer(peerID, serverURL string) error {
+func (config *Config) AddEndpoint(peerID, serverURL string, storeType KeyStoreType) error {
 
 	public, private, err := box.GenerateKey(rand.Reader)
 	if err != nil {
 		return err
 	}
 
-	clearKeyStore := ClearKeyStore{
-		PrivateKey: private[:],
+	keyStore, err := NewKeyStore(storeType, private[:])
+	if err != nil {
+		return err
 	}
 
 	endpoint := &Endpoint{
 		URL:    serverURL,
 		PeerID: peerID,
 		PrivateKeyStores: []*PrivateKeyEnvelope{
-			{Type: KeyStoreClear, Envelope: &clearKeyStore},
+			{Type: KeyStoreClear, keyStore: keyStore},
 		},
 		PublicKey: public[:],
 		Peers:     make(map[string]*Peer),
@@ -241,7 +259,7 @@ func (config *Config) Marshal() ([]byte, error) {
 
 	for _, server := range config.Servers {
 		for _, key := range server.PrivateKeyStores {
-			key.Properties, err = key.Envelope.Marshal()
+			key.Properties, err = key.keyStore.Marshal()
 			if err != nil {
 				return nil, err
 			}
@@ -270,7 +288,7 @@ func (config *Config) Unmarshal(data []byte) error {
 					return err
 				}
 
-				key.Envelope = ks
+				key.keyStore = ks
 			}
 		}
 	}

@@ -39,6 +39,7 @@ func CmdEnrol(config *Config, args []string) error {
 
 	flags := flag.NewFlagSet("enrol", flag.ContinueOnError)
 	force := flags.Bool("force", false, "force overwrite")
+	storeType := flags.String("store", "platform", "Storage type for private key")
 	if err := flags.Parse(args); err != nil {
 		secrt.Usage("secret enrol [--force] user@domain https://server/")
 	}
@@ -53,7 +54,7 @@ func CmdEnrol(config *Config, args []string) error {
 		secrt.Usage("secret enrol [--force] user@domain https://server/")
 	}
 
-	if err := config.AddServer(args[0], args[1]); err != nil {
+	if err := config.AddEndpoint(args[0], args[1], KeyStoreType(*storeType)); err != nil {
 		secrt.Exit(1, fmt.Errorf("unable to enrol user: %w", err))
 	}
 

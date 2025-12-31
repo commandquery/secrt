@@ -4,8 +4,17 @@ import (
 	"encoding/json"
 )
 
+// ClearKeyStore is a keystore that stores the private key in cleartext.
+// You shouldn't use it if you have a choice, but it is certainly helpful for testing,
+// and for devices that don't have any cryptographic key infrastructure.
 type ClearKeyStore struct {
 	PrivateKey []byte `json:"privateKey"`
+}
+
+func NewClearKeyStore(privateKey []byte) *ClearKeyStore {
+	return &ClearKeyStore{
+		PrivateKey: privateKey,
+	}
 }
 
 func (s *ClearKeyStore) Type() KeyStoreType {

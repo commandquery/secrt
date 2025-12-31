@@ -360,9 +360,9 @@ func readInput(args []string, arg int) ([]byte, *secrt.Metadata, error) {
 
 func (endpoint *Endpoint) GetPrivateKey() ([]byte, error) {
 	for _, key := range endpoint.PrivateKeyStores {
-		if key.Envelope != nil {
-			if key.Envelope.IsUnsealed() {
-				return key.Envelope.GetPrivateKey()
+		if key.keyStore != nil {
+			if key.keyStore.IsUnsealed() {
+				return key.keyStore.GetPrivateKey()
 			}
 		}
 	}
