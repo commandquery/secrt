@@ -1,7 +1,7 @@
 # not-so-secret TODO
 
-- [ ] protect the private key on the client (eg with a passphrase)
-  - [ ] private key is a structure containing key type
+- [X] private key is a structure containing key type
+- [X] use platform keystore to store passwords by default
 - [ ] send secrets to multiple people
 - [ ] deploy as an actual service (kill the version running at emersion)
 - [ ] support for multiple servers (eg, -s server)

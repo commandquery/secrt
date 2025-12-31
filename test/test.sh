@@ -17,7 +17,7 @@ trap cleanup EXIT
 
 go build -o secrt ../cmd/secrt
 
-rm -f server.json alice.json bob.json charlie.json denise.json
+rm -f server.json alice.json bob.json charlie.json denise.json ernie.json
 
 secrt server &
 server=$!
@@ -49,7 +49,7 @@ echo $MSG
 # Send a named file from bob to alice.
 #
 echo "--- secrt send (named)"
-MSGID=$(secrt -f bob.json send alice@example.com ./README.md)
+MSGID=$(secrt -f bob.json send alice@example.com ./TEST.md)
 
 #
 # Test that acceptNewPeers=false doesn't break ls.
@@ -114,10 +114,10 @@ secrt -f bob.json ls
 #
 echo "--- secret get -o"
 rm -f OUTPUT.md
-MSGID=$(secrt -f bob.json send alice@example.com ./README.md)
+MSGID=$(secrt -f bob.json send alice@example.com ./TEST.md)
 secrt -f alice.json get -o OUTPUT.md $MSGID
-if ! diff OUTPUT.md README.md > /dev/null; then
-  echo "OUTPUT.md and README.md are different!" 1>&2
+if ! diff OUTPUT.md TEST.md > /dev/null; then
+  echo "OUTPUT.md and TEST.md are different!" 1>&2
   exit 1
 fi
 
@@ -149,6 +149,17 @@ secrt -f denise.json enrol --store=platform denise@example.com http://localhost:
 
 #
 # Test platform keystore access
+#
 echo "--- send with platform keystore"
 MSGID=$(echo "platform keystore" | secrt -f denise.json send alice@example.com)
 MSG=$(secrt -f alice.json get $MSGID)
+
+#
+# Test the default keystore type is "platform"
+#
+echo "--- default keystore type"
+secrt -f ernie.json enrol ernie@example.com http://localhost:8080/
+if ! jq -e '.servers["http://localhost:8080/"].privateKeyStores | map(select(.type == "platform")) | length == 1' ernie.json > /dev/null; then
+  echo "unexpected keystore type in ernie.json, expected default to be 'platform'"
+  exit 1
+fi
