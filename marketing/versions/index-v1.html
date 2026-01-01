@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>secrt.io — Secure Secret Sharing</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'media',
+      theme: {
+        extend: {
+          fontFamily: {
+            mono: ['JetBrains Mono', 'monospace'],
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            terminal: {
+              bg: '#1a1b26',
+              text: '#a9b1d6',
+              green: '#9ece6a',
+              cyan: '#7dcfff',
+              yellow: '#e0af68',
+              red: '#f7768e',
+              purple: '#bb9af7',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .terminal {
+      background: #1a1b26;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+    }
+    .terminal-header {
+      background: #24283b;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .terminal-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .terminal-body {
+      padding: 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #a9b1d6;
+      min-height: 60px;
+    }
+    .prompt::before {
+      content: '$ ';
+      color: #9ece6a;
+    }
+    .command {
+      color: #7dcfff;
+    }
+    .output {
+      color: #787c99;
+      padding-left: 0;
+    }
+    .typing-cursor {
+      display: inline-block;
+      width: 8px;
+      height: 18px;
+      background: #a9b1d6;
+      margin-left: 2px;
+      animation: blink 1s step-end infinite;
+      vertical-align: text-bottom;
+    }
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+    .tab-button {
+      transition: all 0.2s ease;
+    }
+    .tab-button.active {
+      border-bottom: 2px solid currentColor;
+    }
+    .download-tab {
+      display: none;
+    }
+    .download-tab.active {
+      display: block;
+    }
+    /* Smooth transitions for dark mode */
+    html {
+      transition: background-color 0.3s, color 0.3s;
+    }
+    /* Copy button */
+    .copy-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .copy-row .prompt {
+      flex: 1;
+      min-width: 0;
+      word-break: break-all;
+    }
+    .copy-btn {
+      flex-shrink: 0;
+      padding: 4px;
+      border-radius: 4px;
+      color: #787c99;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: color 0.2s, background 0.2s;
+    }
+    .copy-btn:hover {
+      color: #a9b1d6;
+      background: #24283b;
+    }
+    .copy-btn.copied {
+      color: #9ece6a;
+    }
+    .download-link {
+      color: #7dcfff;
+      text-decoration: none;
+    }
+    .download-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 font-sans antialiased">
+
+  <div class="max-w-4xl mx-auto px-6 py-16">
+
+    <!-- Hero Section -->
+    <header class="mb-20">
+      <h1 class="text-4xl md:text-5xl font-semibold font-mono mb-6 tracking-tight">secrt<span class="text-gray-400">.io</span></h1>
+      <p class="text-xl md:text-2xl text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
+        A simple command-line utility that helps technical folk securely share secrets and config files with peers, coworkers and devices using end-to-end encryption.
+      </p>
+      <div class="space-y-4 text-gray-600 dark:text-gray-400">
+        <p>
+          <code class="font-mono text-sm bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded">secrt</code> uses
+          <strong class="text-gray-900 dark:text-gray-200">X25519-XSalsa20-Poly1305</strong> (NaCl box) public-key authenticated end-to-end encryption via
+          <a href="https://pkg.go.dev/golang.org/x/crypto/nacl/box" class="text-blue-600 dark:text-blue-400 hover:underline font-mono text-sm">golang.org/x/crypto/nacl/box</a>.
+        </p>
+        <p>
+          <code class="font-mono text-sm bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded">secrt</code> uses a server to share public keys and forward messages, but your private key never leaves your device, and the server is unable to read your messages.
+        </p>
+        <p>
+          <code class="font-mono text-sm bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded">secrt</code> is for sharing secrets; it's not a file-sharing service. Shared secrets are limited to 50KB and are retained for a maximum of 24 hours.
+        </p>
+      </div>
+    </header>
+
+    <!-- Examples Section -->
+    <section class="mb-20">
+      <h2 class="text-2xl font-semibold mb-6 text-gray-900 dark:text-gray-100">Send secrets from your command line.</h2>
+
+      <div class="terminal max-w-2xl">
+        <div class="terminal-header">
+          <div class="terminal-dot bg-red-500"></div>
+          <div class="terminal-dot bg-yellow-500"></div>
+          <div class="terminal-dot bg-green-500"></div>
+        </div>
+        <div class="terminal-body">
+          <div class="prompt">
+            <span id="animated-command" class="command"></span><span id="cursor" class="typing-cursor"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-8 flex flex-wrap gap-2">
+        <span class="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-full text-sm font-mono">tokens</span>
+        <span class="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-full text-sm font-mono">passwords</span>
+        <span class="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-full text-sm font-mono">api keys</span>
+        <span class="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-full text-sm font-mono">config files</span>
+        <span class="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-full text-sm font-mono">private keys</span>
+        <span class="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-full text-sm font-mono">certificates</span>
+        <span class="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-full text-sm font-mono">ssh keys</span>
+        <span class="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-full text-sm font-mono">credentials</span>
+        <span class="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-full text-sm font-mono">PATs</span>
+        <span class="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-full text-sm font-mono">license keys</span>
+        <span class="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-full text-sm font-mono">reset links</span>
+        <span class="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-full text-sm font-mono">connection strings</span>
+        <span class="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded-full text-sm font-mono">session cookies</span>
+      </div>
+    </section>
+
+    <!-- How to Use Section -->
+    <section class="mb-20">
+      <h2 class="text-2xl font-semibold mb-8 text-gray-900 dark:text-gray-100">How to use it</h2>
+
+      <div class="space-y-6">
+        <!-- Enrol -->
+        <div>
+          <p class="text-gray-600 dark:text-gray-400 mb-3">Generate and share your public key:</p>
+          <div class="terminal">
+            <div class="terminal-header">
+              <div class="terminal-dot bg-red-500"></div>
+              <div class="terminal-dot bg-yellow-500"></div>
+              <div class="terminal-dot bg-green-500"></div>
+            </div>
+            <div class="terminal-body">
+              <div class="prompt"><span class="command">secrt enrol me@example.com</span></div>
+              <div class="output">enrolment completed</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Invite -->
+        <div>
+          <p class="text-gray-600 dark:text-gray-400 mb-3">Invite a friend to enrol:</p>
+          <div class="terminal">
+            <div class="terminal-header">
+              <div class="terminal-dot bg-red-500"></div>
+              <div class="terminal-dot bg-yellow-500"></div>
+              <div class="terminal-dot bg-green-500"></div>
+            </div>
+            <div class="terminal-body">
+              <div class="prompt"><span class="command">secrt invite friend@example.com</span></div>
+              <div class="output">invitation sent</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Send -->
+        <div>
+          <p class="text-gray-600 dark:text-gray-400 mb-3">Send them a secret!</p>
+          <div class="terminal">
+            <div class="terminal-header">
+              <div class="terminal-dot bg-red-500"></div>
+              <div class="terminal-dot bg-yellow-500"></div>
+              <div class="terminal-dot bg-green-500"></div>
+            </div>
+            <div class="terminal-body">
+              <div class="prompt"><span class="command">echo "p4ssw0rd" | secrt send friend@example.com</span></div>
+              <div class="output">2465b56c</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- List -->
+        <div>
+          <p class="text-gray-600 dark:text-gray-400 mb-3">See what secrets have been sent to you:</p>
+          <div class="terminal">
+            <div class="terminal-header">
+              <div class="terminal-dot bg-red-500"></div>
+              <div class="terminal-dot bg-yellow-500"></div>
+              <div class="terminal-dot bg-green-500"></div>
+            </div>
+            <div class="terminal-body">
+              <div class="prompt"><span class="command">secrt ls</span></div>
+              <div class="output" style="font-size: 13px;">
+ID       Peer                       Size Sent       Description
+cbf061e6 alice@example.com           859 10:01:41   README.md</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Get -->
+        <div>
+          <p class="text-gray-600 dark:text-gray-400 mb-3">Download and decrypt a secret:</p>
+          <div class="terminal">
+            <div class="terminal-header">
+              <div class="terminal-dot bg-red-500"></div>
+              <div class="terminal-dot bg-yellow-500"></div>
+              <div class="terminal-dot bg-green-500"></div>
+            </div>
+            <div class="terminal-body">
+              <div class="prompt"><span class="command">secrt get cbf061e6 > README.md</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Download Section -->
+    <section class="mb-20">
+      <h2 class="text-2xl font-semibold mb-6 text-gray-900 dark:text-gray-100">Download</h2>
+
+      <!-- OS Tabs -->
+      <div class="border-b border-gray-200 dark:border-gray-800 mb-6">
+        <div class="flex gap-6">
+          <button class="tab-button active pb-3 font-medium text-gray-900 dark:text-gray-100" data-tab="macos">macOS</button>
+          <button class="tab-button pb-3 font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" data-tab="linux">Linux</button>
+          <button class="tab-button pb-3 font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" data-tab="windows">Windows</button>
+        </div>
+      </div>
+
+      <!-- macOS -->
+      <div id="tab-macos" class="download-tab active">
+        <div class="terminal">
+          <div class="terminal-header">
+            <div class="terminal-dot bg-red-500"></div>
+            <div class="terminal-dot bg-yellow-500"></div>
+            <div class="terminal-dot bg-green-500"></div>
+          </div>
+          <div class="terminal-body">
+            <p class="text-gray-500 mb-2"># Intel</p>
+            <div class="copy-row">
+              <div class="prompt"><span class="command">curl -L <a href="https://github.com/commandquery/secrt/releases/latest/download/secrt-darwin-amd64" class="download-link">https://github.com/commandquery/secrt/releases/latest/download/secrt-darwin-amd64</a> -o secrt && chmod +x secrt</span></div>
+              <button class="copy-btn" data-command="curl -L https://github.com/commandquery/secrt/releases/latest/download/secrt-darwin-amd64 -o secrt && chmod +x secrt" aria-label="Copy to clipboard">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              </button>
+            </div>
+            <p class="text-gray-500 mt-4 mb-2"># Apple Silicon</p>
+            <div class="copy-row">
+              <div class="prompt"><span class="command">curl -L <a href="https://github.com/commandquery/secrt/releases/latest/download/secrt-darwin-arm64" class="download-link">https://github.com/commandquery/secrt/releases/latest/download/secrt-darwin-arm64</a> -o secrt && chmod +x secrt</span></div>
+              <button class="copy-btn" data-command="curl -L https://github.com/commandquery/secrt/releases/latest/download/secrt-darwin-arm64 -o secrt && chmod +x secrt" aria-label="Copy to clipboard">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Linux -->
+      <div id="tab-linux" class="download-tab">
+        <div class="terminal">
+          <div class="terminal-header">
+            <div class="terminal-dot bg-red-500"></div>
+            <div class="terminal-dot bg-yellow-500"></div>
+            <div class="terminal-dot bg-green-500"></div>
+          </div>
+          <div class="terminal-body">
+            <p class="text-gray-500 mb-2"># x86_64</p>
+            <div class="copy-row">
+              <div class="prompt"><span class="command">curl -L <a href="https://github.com/commandquery/secrt/releases/latest/download/secrt-linux-amd64" class="download-link">https://github.com/commandquery/secrt/releases/latest/download/secrt-linux-amd64</a> -o secrt && chmod +x secrt</span></div>
+              <button class="copy-btn" data-command="curl -L https://github.com/commandquery/secrt/releases/latest/download/secrt-linux-amd64 -o secrt && chmod +x secrt" aria-label="Copy to clipboard">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              </button>
+            </div>
+            <p class="text-gray-500 mt-4 mb-2"># ARM64</p>
+            <div class="copy-row">
+              <div class="prompt"><span class="command">curl -L <a href="https://github.com/commandquery/secrt/releases/latest/download/secrt-linux-arm64" class="download-link">https://github.com/commandquery/secrt/releases/latest/download/secrt-linux-arm64</a> -o secrt && chmod +x secrt</span></div>
+              <button class="copy-btn" data-command="curl -L https://github.com/commandquery/secrt/releases/latest/download/secrt-linux-arm64 -o secrt && chmod +x secrt" aria-label="Copy to clipboard">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Windows -->
+      <div id="tab-windows" class="download-tab">
+        <div class="terminal">
+          <div class="terminal-header">
+            <div class="terminal-dot bg-red-500"></div>
+            <div class="terminal-dot bg-yellow-500"></div>
+            <div class="terminal-dot bg-green-500"></div>
+          </div>
+          <div class="terminal-body">
+            <p class="text-gray-500 mb-2"># PowerShell</p>
+            <div class="copy-row">
+              <div class="prompt" style="color: #7dcfff;">Invoke-WebRequest -Uri "<a href="https://github.com/commandquery/secrt/releases/latest/download/secrt-windows-amd64.exe" class="download-link">https://github.com/commandquery/secrt/releases/latest/download/secrt-windows-amd64.exe</a>" -OutFile "secrt.exe"</div>
+              <button class="copy-btn" data-command="Invoke-WebRequest -Uri &quot;https://github.com/commandquery/secrt/releases/latest/download/secrt-windows-amd64.exe&quot; -OutFile &quot;secrt.exe&quot;" aria-label="Copy to clipboard">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              </button>
+            </div>
+            <p class="text-gray-500 mt-4 mb-2"># Or download directly</p>
+            <p class="text-gray-400">
+              <a href="https://github.com/commandquery/secrt/releases/latest/download/secrt-windows-amd64.exe" class="download-link">secrt-windows-amd64.exe</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Limitations Section -->
+    <section class="mb-20">
+      <h2 class="text-2xl font-semibold mb-6 text-gray-900 dark:text-gray-100">Limitations</h2>
+      <ul class="space-y-3 text-gray-600 dark:text-gray-400">
+        <li class="flex items-start gap-3">
+          <span class="text-gray-400 mt-1">—</span>
+          <span>Secrets are limited to <strong class="text-gray-900 dark:text-gray-200">50KB</strong> (that's a big key!)</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-gray-400 mt-1">—</span>
+          <span>Secrets are permanently deleted after <strong class="text-gray-900 dark:text-gray-200">24 hours</strong></span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="text-gray-400 mt-1">—</span>
+          <span>Acceptable use policy applies</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-200 dark:border-gray-800 pt-8 text-center text-gray-500 text-sm">
+      <p class="font-mono">secrt.io</p>
+    </footer>
+
+  </div>
+
+  <script>
+    // Tab switching
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabPanels = document.querySelectorAll('.download-tab');
+
+    tabButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const tabId = button.dataset.tab;
+
+        tabButtons.forEach(btn => btn.classList.remove('active', 'text-gray-900', 'dark:text-gray-100'));
+        tabButtons.forEach(btn => btn.classList.add('text-gray-500'));
+        button.classList.add('active', 'text-gray-900', 'dark:text-gray-100');
+        button.classList.remove('text-gray-500');
+
+        tabPanels.forEach(panel => panel.classList.remove('active'));
+        document.getElementById(`tab-${tabId}`).classList.add('active');
+      });
+    });
+
+    // Copy to clipboard
+    const copyButtons = document.querySelectorAll('.copy-btn');
+    copyButtons.forEach(button => {
+      button.addEventListener('click', async () => {
+        const command = button.dataset.command;
+        await navigator.clipboard.writeText(command);
+        button.classList.add('copied');
+        button.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+        setTimeout(() => {
+          button.classList.remove('copied');
+          button.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>';
+        }, 2000);
+      });
+    });
+
+    // Animated terminal typing
+    const commands = [
+      { file: 'token.yaml', email: 'coworker@example.com' },
+      { file: 'api-key.txt', email: 'teammate@company.io' },
+      { file: '.env', email: 'dev@startup.co' },
+      { file: 'id_rsa', email: 'peer@example.com' },
+      { file: 'license.key', email: 'housemate@home.net' },
+      { file: 'credentials.json', email: 'alice@example.com' },
+      { file: 'db-password.txt', email: 'ops@infra.io' },
+      { file: 'cert.pem', email: 'bob@company.com' },
+      { file: 'session.cookie', email: 'friend@example.org' },
+      { file: 'connection-string.txt', email: 'admin@service.io' }
+    ];
+
+    const commandElement = document.getElementById('animated-command');
+    const cursorElement = document.getElementById('cursor');
+    let commandIndex = 0;
+
+    async function typeCommand(text) {
+      commandElement.textContent = '';
+      for (let i = 0; i < text.length; i++) {
+        commandElement.textContent += text[i];
+        await new Promise(resolve => setTimeout(resolve, 40 + Math.random() * 30));
+      }
+    }
+
+    async function animateCommands() {
+      while (true) {
+        const cmd = commands[commandIndex];
+        const fullCommand = `secrt send ${cmd.file} ${cmd.email}`;
+
+        await typeCommand(fullCommand);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        commandIndex = (commandIndex + 1) % commands.length;
+      }
+    }
+
+    animateCommands();
+  </script>
+
+</body>
+</html>
