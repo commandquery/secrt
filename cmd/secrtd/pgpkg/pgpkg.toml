@@ -1,0 +1,14 @@
+Package = "github.com/commandquery/secrt"
+Schemas = [ "secrt" ]
+Extensions = [ "pgcrypto", "uuid-ossp" ]
+Migrations = [
+    "schema/policy.sql",
+    "schema/pool.sql",
+    "schema/counter.sql",
+    "schema/server.sql",
+    "schema/peer.sql",
+    "schema/hostname.sql",
+    "schema/message.sql",
+    "schema/activation.sql",
+    "schema/telemetry.sql"
+]

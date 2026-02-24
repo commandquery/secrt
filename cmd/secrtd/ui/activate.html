@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activate — secrt.io</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #f9fafb;
+      --bg-card: #ffffff;
+      --text: #111827;
+      --text-muted: #6b7280;
+      --border: #e5e7eb;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --error: #ef4444;
+      --error-bg: #fef2f2;
+      --error-border: #fecaca;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #030712;
+        --bg-card: #111827;
+        --text: #f9fafb;
+        --text-muted: #9ca3af;
+        --border: #374151;
+        --primary: #3b82f6;
+        --primary-hover: #60a5fa;
+        --error: #f87171;
+        --error-bg: #1f1215;
+        --error-border: #7f1d1d;
+      }
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    .logo {
+      font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Courier New', monospace;
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      margin-bottom: 48px;
+    }
+
+    .logo span {
+      color: var(--text-muted);
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .card {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+      }
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0 0 12px 0;
+    }
+
+    .description {
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1.5;
+      margin: 0 0 32px 0;
+    }
+
+    .code-input-wrapper {
+      position: relative;
+      margin-bottom: 24px;
+      width: 328px;
+      height: 56px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .code-input {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Courier New', monospace;
+      font-size: 24px;
+      font-weight: 500;
+      letter-spacing: 42px;
+      padding-left: 17px;
+      border: none;
+      background: transparent;
+      color: transparent;
+      caret-color: transparent;
+      outline: none;
+      z-index: 2;
+    }
+
+    .code-input::selection {
+      background: transparent;
+    }
+
+    .code-boxes {
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: flex;
+      gap: 8px;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .code-box {
+      width: 48px;
+      height: 56px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Courier New', monospace;
+      font-size: 24px;
+      font-weight: 500;
+      color: var(--text);
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+
+    .code-box.filled {
+      border-color: var(--primary);
+      background: var(--bg-card);
+    }
+
+    .code-box.active {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 14px 24px;
+      font-size: 15px;
+      font-weight: 500;
+      color: white;
+      background: var(--primary);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .submit-btn:hover {
+      background: var(--primary-hover);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .error-message {
+      background: var(--error-bg);
+      border: 1px solid var(--error-border);
+      color: var(--error);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .error-message.visible {
+      display: block;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">secrt<span>.io</span></div>
+
+    <div class="card">
+      <h1>Activate Your Account</h1>
+      <p class="description">Please enter the 6-digit code that was included in the activation email.</p>
+
+      <div id="error" class="error-message"></div>
+
+      <form id="activation-form">
+        <div class="code-input-wrapper">
+          <input
+            type="text"
+            id="code-input"
+            class="code-input"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="6"
+            autocomplete="one-time-code"
+            autofocus
+            aria-label="6-digit activation code"
+          >
+          <div class="code-boxes">
+            <div class="code-box" data-index="0"></div>
+            <div class="code-box" data-index="1"></div>
+            <div class="code-box" data-index="2"></div>
+            <div class="code-box" data-index="3"></div>
+            <div class="code-box" data-index="4"></div>
+            <div class="code-box" data-index="5"></div>
+          </div>
+        </div>
+
+        <button type="submit" id="submit-btn" class="submit-btn" disabled>
+          Activate
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const form = document.getElementById('activation-form');
+      const input = document.getElementById('code-input');
+      const submitBtn = document.getElementById('submit-btn');
+      const errorEl = document.getElementById('error');
+      const boxes = Array.from(document.querySelectorAll('.code-box'));
+
+      // Get token from URL
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('t');
+
+      if (!token) {
+        showError('Invalid activation link. Please check your email for the correct link.');
+        submitBtn.disabled = true;
+      }
+
+      function updateBoxes() {
+        const value = input.value;
+        const focused = document.activeElement === input;
+
+        boxes.forEach((box, i) => {
+          box.textContent = value[i] || '';
+          box.classList.toggle('filled', !!value[i]);
+          box.classList.toggle('active', focused && i === value.length && value.length < 6);
+        });
+
+        submitBtn.disabled = value.length !== 6 || !token;
+      }
+
+      input.addEventListener('input', function() {
+        // Only allow digits
+        this.value = this.value.replace(/\D/g, '').slice(0, 6);
+        updateBoxes();
+        hideError();
+
+        if (this.value.length === 6) {
+          submitBtn.focus();
+        }
+      });
+
+      input.addEventListener('focus', updateBoxes);
+      input.addEventListener('blur', updateBoxes);
+
+      input.addEventListener('paste', function(e) {
+        e.preventDefault();
+        const pasted = (e.clipboardData || window.clipboardData).getData('text');
+        this.value = pasted.replace(/\D/g, '').slice(0, 6);
+        updateBoxes();
+      });
+
+      function showError(message) {
+        errorEl.textContent = message;
+        errorEl.classList.add('visible');
+      }
+
+      function hideError() {
+        errorEl.classList.remove('visible');
+      }
+
+      function setLoading(loading) {
+        if (loading) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<span class="spinner"></span>Activating...';
+        } else {
+          submitBtn.disabled = input.value.length !== 6 || !token;
+          submitBtn.textContent = 'Activate';
+        }
+      }
+
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const code = input.value;
+        if (code.length !== 6 || !token) return;
+
+        hideError();
+        setLoading(true);
+
+        try {
+          const response = await fetch('/activate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              token: token,
+              code: parseInt(code, 10)
+            }),
+          });
+
+          if (response.ok) {
+            window.location.href = 'welcome.html';
+          } else {
+            let message = 'Activation failed. Please check your code and try again.';
+            try {
+              const data = await response.json();
+              if (data.error) message = data.error;
+            } catch {}
+            showError(message);
+            input.value = '';
+            updateBoxes();
+            input.focus();
+          }
+        } catch (err) {
+          showError('Unable to connect to the server. Please try again.');
+          input.value = '';
+          updateBoxes();
+          input.focus();
+        } finally {
+          setLoading(false);
+        }
+      });
+
+      // Initial state
+      updateBoxes();
+    })();
+  </script>
+</body>
+</html>

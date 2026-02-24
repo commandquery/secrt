@@ -1,0 +1,10 @@
+.DS_Store
+.idea
+/test/OUTPUT.md
+/test/secrt
+/test/stores
+/cmd/secrt/server.json
+/test/server.json
+/test/secrtd
+/cmd/secrtd/secrtd
+/test/token.txt
