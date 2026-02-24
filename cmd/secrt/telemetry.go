@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 	"runtime"
-	"syscall"
 	"time"
 
 	"github.com/commandquery/secrt"
@@ -29,13 +28,7 @@ func CollectTelemetry(command string, exitCode int, startTime time.Time) secrt.T
 		ElapsedMs: time.Since(startTime).Milliseconds(),
 	}
 
-	var rusage syscall.Rusage
-	if err := syscall.Getrusage(syscall.RUSAGE_SELF, &rusage); err == nil {
-		utime := rusage.Utime.Nano() / 1e6 // reduce resolution to avoid fingerprinting
-		stime := rusage.Stime.Nano() / 1e6 // reduce resolution to avoid fingerprinting
-		t.UtimeMs = &utime
-		t.StimeMs = &stime
-	}
+	t.UtimeMs, t.StimeMs = collectRusage()
 
 	return t
 }
