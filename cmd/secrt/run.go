@@ -40,7 +40,7 @@ func MergeEnv(secretEnv []byte) ([]string, error) {
 }
 
 // CmdRun runs a shell command with the given secret as the environment (or stdin).
-func CmdRun(config *Config, endpoint *Endpoint, args []string) error {
+func CmdRun(cache *Cache, args []string) error {
 
 	flags := flag.NewFlagSet("run", flag.ContinueOnError)
 	envSecretId := flags.String("env", "", "use the given JSON secret as the environment")
@@ -55,29 +55,36 @@ func CmdRun(config *Config, endpoint *Endpoint, args []string) error {
 		return fmt.Errorf("no command to run")
 	}
 
-	secretEnv, err := FindMessage(config, endpoint, *envSecretId)
-	if err != nil {
-		return fmt.Errorf("unable to find environment: %w", err)
+	var envSecret, stdinSecret *Cleartext
+	var err error
+
+	if *envSecretId != "" {
+		envSecret, err = cache.FindMessage(*envSecretId)
+		if err != nil {
+			return fmt.Errorf("unable to find environment: %w", err)
+		}
 	}
 
-	stdin, err := FindMessage(config, endpoint, *stdinSecretId)
-	if err != nil {
-		return fmt.Errorf("unable to find stdin: %w", err)
+	if *stdinSecretId != "" {
+		stdinSecret, err = cache.FindMessage(*stdinSecretId)
+		if err != nil {
+			return fmt.Errorf("unable to find stdin: %w", err)
+		}
 	}
 
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	if *envSecretId != "" {
-		cmd.Env, err = MergeEnv(secretEnv.Cleartext)
+	if envSecret != nil {
+		cmd.Env, err = MergeEnv(envSecret.Cleartext)
 		if err != nil {
 			return err
 		}
 	}
 
-	if *stdinSecretId != "" {
-		cmd.Stdin = bytes.NewReader(stdin.Cleartext)
+	if stdinSecret != nil {
+		cmd.Stdin = bytes.NewReader(stdinSecret.Cleartext)
 	} else {
 		cmd.Stdin = os.Stdin
 	}

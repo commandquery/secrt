@@ -10,6 +10,7 @@ create or replace
         _policies uuid[];
         _expires timestamptz;
         _max_expiry_seconds integer;
+        _seq integer = 0;
     begin
         _delta = secrt.delta(
             message_count => 1,
@@ -22,8 +23,11 @@ create or replace
             from secrt.policy where policy = any(_policies) and message_expiry_seconds is not null;
         _expires = current_timestamp + (_max_expiry_seconds * '1 second'::interval);
 
-        insert into secrt.message (message, peer, server, received, expires, metadata, payload, claims)
-            values (_message_k, _recipient, _server, current_timestamp, _expires, _metadata, _payload, _claims);
+        insert into secrt.seq (peer, next) values (_recipient, 1)
+            on conflict (peer) do update set next=secrt.seq.next+1 returning next into _seq;
+
+        insert into secrt.message (message, peer, seq, server, received, expires, metadata, payload, claims)
+            values (_message_k, _recipient, _seq, _server, current_timestamp, _expires, _metadata, _payload, _claims);
 
         return _message_k;
     end;

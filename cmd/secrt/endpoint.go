@@ -224,44 +224,6 @@ func (endpoint *Endpoint) Encrypt(plaintext []byte, peerBoxKey []byte) ([]byte, 
 	return box.Seal(ciphertext, plaintext, &nonce, secrt.To32(peerBoxKey), secrt.To32(boxPrivateKey)), nil
 }
 
-func (endpoint *Endpoint) DecryptPeer(config *Config, alias string, ciphertext []byte) ([]byte, error) {
-	peer, err := endpoint.GetPeer(config, alias)
-	if err != nil {
-		return nil, fmt.Errorf("unable to find peer %s: %w", alias, err)
-	}
-
-	msg, err := endpoint.Decrypt(config, peer.BoxPublicKey, ciphertext[:])
-	if err != nil {
-		return nil, fmt.Errorf("unable to decrypt message from %s: %w", alias, err)
-	}
-
-	return msg, nil
-}
-
-func (endpoint *Endpoint) Decrypt(config *Config, peerBoxKey []byte, ciphertext []byte) ([]byte, error) {
-	// Check that the version number works with us.
-	if ciphertext[0] != 0 {
-		return nil, fmt.Errorf("ciphertext version (%d) is not supported. Try upgrading `secret`", ciphertext[0])
-	}
-
-	var nonce [24]byte
-	copy(nonce[:], ciphertext[1:25])
-
-	boxPrivateKey, err := endpoint.GetSecretValue("boxPrivateKey")
-	if err != nil {
-		return nil, err
-	}
-
-	var out []byte
-	out, ok := box.Open(out, ciphertext[25:], &nonce, secrt.To32(peerBoxKey), secrt.To32(boxPrivateKey))
-
-	if !ok {
-		return nil, fmt.Errorf("unable to authenticate message")
-	}
-
-	return out, nil
-}
-
 func (endpoint *Endpoint) GetChallenge() (*secrt.ChallengeRequest, error) {
 	endpointURL := endpoint.Path("challenge")
 	resp, err := http.Get(endpointURL)
@@ -285,20 +247,4 @@ func (endpoint *Endpoint) GetChallenge() (*secrt.ChallengeRequest, error) {
 	}
 
 	return challenge, nil
-}
-
-// GetClaims decrypts the claims object of a message. Claims are encrypted by the server,
-// using the server's key, which is associated with this endpoint.
-func (endpoint *Endpoint) GetClaims(config *Config, cryptclaims []byte) (*secrt.Claims, error) {
-	claimbytes, err := endpoint.Decrypt(config, endpoint.ServerBoxKey, cryptclaims)
-	if err != nil {
-		return nil, fmt.Errorf("unable to decrypt message claims: %w", err)
-	}
-
-	var claims secrt.Claims
-	if err := json.Unmarshal(claimbytes, &claims); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal claims: %w", err)
-	}
-
-	return &claims, nil
 }

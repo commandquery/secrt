@@ -10,5 +10,7 @@ Migrations = [
     "schema/hostname.sql",
     "schema/message.sql",
     "schema/activation.sql",
-    "schema/telemetry.sql"
+    "schema/telemetry.sql",
+    "schema/seq.sql",
+    "schema/message@001.sql",
 ]

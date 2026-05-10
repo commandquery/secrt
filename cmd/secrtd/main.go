@@ -115,6 +115,7 @@ func ListenAndServe() error {
 	mux.HandleFunc("POST "+pathPrefix+"invite", dispatch((*SecretServer).handleInvite))
 	mux.HandleFunc("GET "+pathPrefix+"challenge", dispatch((*SecretServer).handleGetChallenge))
 	mux.HandleFunc("POST "+pathPrefix+"telemetry", dispatch((*SecretServer).handlePostTelemetry))
+	mux.HandleFunc("GET "+pathPrefix+"pull", dispatch((*SecretServer).handlePull))
 
 	// POST performs the enrolment. GET displays the HTML activation page.
 	mux.HandleFunc("POST "+pathPrefix+"activate", dispatch((*SecretServer).handlePostActivate))

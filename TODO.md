@@ -1,10 +1,13 @@
 # not-so-secret TODO
 
 ## Soft Launch Blockers / bugs
-- [X] secrt ls doesn't display the cache entry in my own cache!
-- [ ] make cache sync more robust / obvious
-  - should be a read-through cache
+- [ ] ability to pin/save secrets, esp. for use with `secrt run`
+  - can't use metadata or claims, they are signed by the sender/server
+  - save names locally
+- [ ] let the config be exported/imported with a random, separate passphrase / ssh integration??
+- [ ] search for secrets by pinned name / tag
 - [ ] Support for a "upgrade required" status on all API responses - http 426
+- [ ] support for "please upgrade" (or something) header - for soft upgrade 
 - [ ] user docs
 - [ ] "* If you didn't expect a message from mark.lillywhite@emersion.com, don't trust it." -- when SENDING!
 - [ ] bring back short message listings
@@ -232,3 +235,6 @@
 - [X] where does the client get the server signing key for claims? or are they encrypted
 - [X] secrt rm should accept short ids
 - [X] carefully review the API, it will be a pain to change later.
+- [X] secrt ls doesn't display the cache entry in my own cache!
+- [X] implement a cache as the top-level primitive in the server
+- [X] implement cache.pull() on client and server

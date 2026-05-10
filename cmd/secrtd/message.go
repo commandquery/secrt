@@ -89,6 +89,7 @@ func (server *SecretServer) handleGetMessage(r *http.Request, _ *jtp.None) (*sec
 	}
 
 	return &secrt.Message{
+		Message:  msg.Message,
 		Metadata: msg.Metadata,
 		Payload:  msg.Payload,
 		Claims:   msg.Claims,
@@ -145,6 +146,7 @@ func GetMessage(peer *Peer, messageId string) (*Message, error) {
 	row := PGXPool.QueryRow(ctx, "select message, received, metadata, payload, claims from secrt.message where message.peer=$1 and message=$2", peer.Peer, msgUuid)
 
 	msg := Message{
+		Message:   msgUuid,
 		Recipient: peer.Peer,
 	}
 

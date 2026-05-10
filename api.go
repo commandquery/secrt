@@ -15,9 +15,11 @@ type Inbox struct {
 // Message is the encrypted message. Claims are encrypted using the server's key,
 // while Payload and Metadata are encrypted by the sending peer.
 type Message struct {
-	Metadata []byte `json:"metadata"` // encrypted metadata, contains unencrypted size.
-	Payload  []byte `json:"payload"`  // the actual message payload
-	Claims   []byte `json:"claims"`   // server-sealed claims for this message, including sender
+	Message  uuid.UUID `json:"message"`  // Message ID
+	Sequence int       `json:"sequence"` // Sequence number of this message
+	Metadata []byte    `json:"metadata"` // encrypted metadata, contains unencrypted size.
+	Payload  []byte    `json:"payload"`  // the actual message payload
+	Claims   []byte    `json:"claims"`   // server-sealed claims for this message, including sender
 }
 
 type Metadata struct {
@@ -117,4 +119,12 @@ type Telemetry struct {
 	UtimeMs   *int64 `json:"utimeMs,omitempty"`
 	StimeMs   *int64 `json:"stimeMs,omitempty"`
 	ExitCode  int    `json:"exitCode"`
+}
+
+type PullRequest struct {
+	LastSequence int // last sequence number seen by pull
+}
+
+type PullResponse struct {
+	Messages []Message // list of messages since the last pull
 }

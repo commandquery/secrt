@@ -75,6 +75,17 @@ func main() {
 		return
 	}
 
+	cache, err := OpenCache(config, endpoint)
+	if err != nil {
+		secrt.Exit(1, err)
+	}
+
+	if command != "activate" {
+		if err = cache.pull(); err != nil {
+			secrt.Exit(1, err)
+		}
+	}
+
 	switch command {
 	case "enrol":
 		err = CmdEnrol(config, args)
@@ -92,13 +103,13 @@ func main() {
 		}
 
 	case "ls":
-		err = CmdLs(config, endpoint, args)
+		err = CmdLs(cache, args)
 		if err == nil {
 			err = config.Save()
 		}
 
 	case "get":
-		err = CmdGet(config, endpoint, args)
+		err = CmdGet(cache, args)
 		if err == nil {
 			err = config.Save()
 		}
@@ -110,10 +121,10 @@ func main() {
 		}
 
 	case "rm":
-		err = CmdRm(config, endpoint, args)
+		err = CmdRm(cache, args)
 
 	case "run":
-		err = CmdRun(config, endpoint, args)
+		err = CmdRun(cache, args)
 
 	case "set":
 		if len(args) != 1 {

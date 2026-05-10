@@ -3,16 +3,12 @@ package main
 import (
 	"cmp"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"slices"
 	"time"
 
-	secrt "github.com/commandquery/secrt"
-	"github.com/commandquery/secrt/jtp"
 	"github.com/google/uuid"
 )
 
@@ -30,44 +26,21 @@ type ListItem struct {
 }
 
 // Merge any new items from the server with a list of items already in cache.
-func getListItems(config *Config, endpoint *Endpoint) ([]*ListItem, error) {
-	var inbox secrt.Inbox
-	if err := Call(endpoint, jtp.Nil, &inbox, "GET", "inbox"); err != nil {
-		if !errors.Is(err, jtp.ErrNoContent) {
-			return nil, err
-		}
-	}
-
-	messageIndex := make(map[uuid.UUID]bool)
-	for _, msgId := range inbox.MessageIDs {
-		messageIndex[msgId] = true
-	}
-
-	// a cache doesn't necessarily exist.
-	if config.Properties.Cache {
-		cache := filepath.Join(config.store, "cache")
-		cacheEntries, err := os.ReadDir(cache)
-		if err == nil {
-			for _, cacheFile := range cacheEntries {
-				id, err := uuid.Parse(cacheFile.Name())
-				if err != nil {
-					_, _ = fmt.Fprintln(os.Stderr, "unexpected file in cache directory:", cacheFile.Name())
-					continue
-				}
-				messageIndex[id] = true
-			}
-		}
+func getListItems(cache *Cache) ([]*ListItem, error) {
+	entries, err := cache.Entries()
+	if err != nil {
+		return nil, err
 	}
 
 	// no messages?
-	if len(messageIndex) == 0 {
+	if len(entries) == 0 {
 		return nil, nil
 	}
 
 	var listItems []*ListItem
 
-	for msgID, _ := range messageIndex {
-		entry, err := getListEntry(config, endpoint, msgID)
+	for _, msgID := range entries {
+		entry, err := getListEntry(cache, msgID)
 		if err != nil {
 			return nil, fmt.Errorf("unable to get ls entry: %w", err)
 		}
@@ -83,7 +56,7 @@ func getListItems(config *Config, endpoint *Endpoint) ([]*ListItem, error) {
 }
 
 // CmdLs lists the secrets waiting on the server.
-func CmdLs(config *Config, endpoint *Endpoint, args []string) error {
+func CmdLs(cache *Cache, args []string) error {
 
 	flags := flag.NewFlagSet("ls", flag.ContinueOnError)
 	jsFormat := flags.Bool("json", false, "output as JSON")
@@ -92,7 +65,7 @@ func CmdLs(config *Config, endpoint *Endpoint, args []string) error {
 		return err
 	}
 
-	listItems, err := getListItems(config, endpoint)
+	listItems, err := getListItems(cache)
 	if err != nil {
 		return err
 	}
@@ -104,10 +77,10 @@ func CmdLs(config *Config, endpoint *Endpoint, args []string) error {
 	return printInbox(listItems)
 }
 
-func getListEntry(config *Config, endpoint *Endpoint, msgID uuid.UUID) (*ListItem, error) {
+func getListEntry(cache *Cache, msgID uuid.UUID) (*ListItem, error) {
 
 	var entry *ListItem
-	cleartext, err := GetCleartext(config, endpoint, msgID)
+	cleartext, err := cache.GetCleartext(msgID)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to get message: %w", err)

@@ -176,7 +176,7 @@ fi
 # Bad message ID
 #
 if secrt -c stores/bob rm xxxxxxxx 2> /dev/null; then
-  echo "secrt rm should have failed"
+  echo "secrt rm should have failed (bad message id)"
   exit 1
 fi
 
@@ -184,7 +184,7 @@ fi
 # Valid but missing message ID
 #
 if secrt -c stores/bob rm 91743420-7FFA-491F-B64B-02B88873B8F7 2> /dev/null; then
-  echo "secrt rm should have failed"
+  echo "secrt rm should have failed (unknown message id)"
   exit 1
 fi
 
@@ -308,6 +308,7 @@ secrt -c stores/alice ls
 #
 # Test "secrt run" - with an environment
 #
+echo "--- secrt run env"
 enrol stores/joe joe@example.com clear
 ENVID=$(echo "SECRT_ENV=true" | secrt -c stores/joe send joe@example.com)
 secrt -c stores/joe run -env $ENVID env
@@ -315,10 +316,12 @@ secrt -c stores/joe run -env $ENVID env
 #
 # Test "secrt run" - with stdin
 #
+echo "--- secrt run stdin"
 STDINID=$(echo "hello, world" | secrt -c stores/joe send joe@example.com)
 secrt -c stores/joe run -stdin $STDINID cat
 
 #
-# Test "secrt run" - with stdin
+# Test "secrt run" - with env AND stdin
 #
+echo "--- secrt run env+stdin"
 secrt -c stores/joe run -env $ENVID -stdin $STDINID sh -c "env; cat"
