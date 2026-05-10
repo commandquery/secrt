@@ -11,6 +11,7 @@ import (
 	"github.com/commandquery/secrt"
 	"github.com/commandquery/secrt/jtp"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 // Message is the internal representation of a message. Use secrt.Message to
@@ -148,6 +149,9 @@ func GetMessage(peer *Peer, messageId string) (*Message, error) {
 	}
 
 	if err := row.Scan(&msg.Message, &msg.Received, &msg.Metadata, &msg.Payload, &msg.Claims); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrUnknownMessageID
+		}
 		return nil, fmt.Errorf("unable to read message: %w", err)
 	}
 

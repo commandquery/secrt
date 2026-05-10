@@ -33,10 +33,9 @@ type ListItem struct {
 func getListItems(config *Config, endpoint *Endpoint) ([]*ListItem, error) {
 	var inbox secrt.Inbox
 	if err := Call(endpoint, jtp.Nil, &inbox, "GET", "inbox"); err != nil {
-		if errors.Is(err, jtp.ErrNoContent) {
-			return nil, nil
+		if !errors.Is(err, jtp.ErrNoContent) {
+			return nil, err
 		}
-		return nil, err
 	}
 
 	messageIndex := make(map[uuid.UUID]bool)

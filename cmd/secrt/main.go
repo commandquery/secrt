@@ -112,6 +112,9 @@ func main() {
 	case "rm":
 		err = CmdRm(config, endpoint, args)
 
+	case "run":
+		err = CmdRun(config, endpoint, args)
+
 	case "set":
 		if len(args) != 1 {
 			secrt.Usage()

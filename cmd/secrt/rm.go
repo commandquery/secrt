@@ -18,11 +18,13 @@ func CmdRm(config *Config, endpoint *Endpoint, args []string) error {
 	}
 
 	if err := Call(endpoint, jtp.Nil, jtp.Nil, "DELETE", "message", msgUuid.String()); err != nil {
-		return fmt.Errorf("unable to remove message: %w", err)
+		if !errors.Is(err, jtp.ErrNotFound) {
+			return fmt.Errorf("unable to remove message: %w", err)
+		}
 	}
 
 	cacheDir := filepath.Join(config.store, "cache")
-	cacheFile := filepath.Join(cacheDir, args[0])
+	cacheFile := filepath.Join(cacheDir, msgUuid.String())
 
 	err = os.Remove(cacheFile)
 	if err == nil || errors.Is(err, os.ErrNotExist) {

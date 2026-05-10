@@ -187,6 +187,25 @@ func GetCleartext(config *Config, endpoint *Endpoint, msgID uuid.UUID) (*Clearte
 	return &cleartext, nil
 }
 
+// FindMessage finds a message by short ID and returns the cleartext message if found.
+func FindMessage(config *Config, endpoint *Endpoint, partialID string) (*Cleartext, error) {
+	msgID, err := FindMessageID(config, partialID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to find message %s: %w", partialID, err)
+	}
+
+	cleartext, err := GetCleartext(config, endpoint, msgID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get message %s: %w", partialID, err)
+	}
+
+	if cleartext.UnacceptablePeer {
+		return nil, fmt.Errorf("unknown peer: %s", cleartext.Claims.Alias)
+	}
+
+	return cleartext, nil
+}
+
 // CmdGet gets a secret message (and decrypts it). You can use either the short, 8-character UUID, or the full UUID
 // If there's more than one secret with the same short MessageID, the server will send us an error.
 func CmdGet(config *Config, endpoint *Endpoint, args []string) error {
@@ -202,18 +221,9 @@ func CmdGet(config *Config, endpoint *Endpoint, args []string) error {
 		return fmt.Errorf("message MessageID not specified")
 	}
 
-	msgID, err := FindMessageID(config, args[0])
+	cleartext, err := FindMessage(config, endpoint, args[0])
 	if err != nil {
 		return fmt.Errorf("unable to find message %s: %w", args[0], err)
-	}
-
-	cleartext, err := GetCleartext(config, endpoint, msgID)
-	if err != nil {
-		return fmt.Errorf("unable to get message %s: %w", args[0], err)
-	}
-
-	if cleartext.UnacceptablePeer {
-		return fmt.Errorf("unknown peer: %s", cleartext.Claims.Alias)
 	}
 
 	var target = os.Stdout

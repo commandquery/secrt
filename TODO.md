@@ -1,6 +1,12 @@
 # not-so-secret TODO
 
-## Soft Launch Blockers
+## Soft Launch Blockers / bugs
+- [X] secrt ls doesn't display the cache entry in my own cache!
+- [ ] make cache sync more robust / obvious
+  - should be a read-through cache
+- [ ] Support for a "upgrade required" status on all API responses - http 426
+- [ ] user docs
+- [ ] "* If you didn't expect a message from mark.lillywhite@emersion.com, don't trust it." -- when SENDING!
 - [ ] bring back short message listings
 - [ ] activation command doesn't send a token nor a challenge
 - [ ] how does activation token work, can we send a token in enrolment to allow web activation?
@@ -24,16 +30,11 @@
 
 ## Server Features
 
+- [ ] peers belong to zero or more servers, any number of servers
+- [ ] server features kick in when two peers are on the same server
+- [ ] that's possibly all we need
 - [ ] restricted by email patterns and/or by invite
-- [ ] secret groups
-  - groups are a set of public keys - admins, senders and receivers
-  - clients download the group config
-  - group config must be signed by one of the group admins
-  - pinned secrets - no expiry time - everyone in the group gets the latest secret
-  - enrol a machine in a group, keep the private key on the machine, don't need to copy it
-  - re-enrol a machine by generating a new key - web UI or CLI to add it
-  - sharing a secret with a group will share it with all machines in that group
-  - re-enroling happens automagically
+- [ ] secret groups - see GROUPS.md
 
 ## Code Release
 

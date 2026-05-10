@@ -304,3 +304,21 @@ secrt -c stores/alice ls
 #
 #echo "--- secrt double enrol --force"
 #secrt -c stores/guy enrol --force guy@example.com http://localhost:8080/
+
+#
+# Test "secrt run" - with an environment
+#
+enrol stores/joe joe@example.com clear
+ENVID=$(echo "SECRT_ENV=true" | secrt -c stores/joe send joe@example.com)
+secrt -c stores/joe run -env $ENVID env
+
+#
+# Test "secrt run" - with stdin
+#
+STDINID=$(echo "hello, world" | secrt -c stores/joe send joe@example.com)
+secrt -c stores/joe run -stdin $STDINID cat
+
+#
+# Test "secrt run" - with stdin
+#
+secrt -c stores/joe run -env $ENVID -stdin $STDINID sh -c "env; cat"
