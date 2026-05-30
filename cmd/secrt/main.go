@@ -12,10 +12,13 @@ import (
 func main() {
 	startTime := time.Now()
 	var storeDirectory string
+	var noSaveFlag bool
 	var err error
 
 	flags := flag.NewFlagSet("secrt", flag.ContinueOnError)
 	flags.StringVar(&storeDirectory, "c", GetStoreDirectory(), "path to secrt directory")
+	flags.BoolVar(&noSaveFlag, "no-save", false, "do not update the config file")
+
 	if err := flags.Parse(os.Args[1:]); err != nil {
 		secrt.Exit(1, err)
 	}
@@ -45,6 +48,7 @@ func main() {
 
 	command := flags.Args()[0]
 	args := flags.Args()[1:]
+	config.canSave = !noSaveFlag
 
 	// Special case when there is no existing config/endpoint
 	if endpoint == nil {

@@ -77,12 +77,17 @@ func CmdSend(config *Config, endpoint *Endpoint, args []string) error {
 			RecipientAlias: alias,
 		}
 
-		request.Metadata, err = endpoint.Encrypt(clearmeta, peer.BoxPublicKey)
+		publicKey := peer.GetDefaultPublicKey("box")
+		if publicKey == nil {
+			return fmt.Errorf("public key for peer %q not found", alias)
+		}
+
+		request.Metadata, err = endpoint.Encrypt(clearmeta, publicKey.Key)
 		if err != nil {
 			return fmt.Errorf("unable to encrypt metadata: %w", err)
 		}
 
-		request.Payload, err = endpoint.Encrypt(plaintext, peer.BoxPublicKey)
+		request.Payload, err = endpoint.Encrypt(plaintext, publicKey.Key)
 		if err != nil {
 			return fmt.Errorf("unable to encrypt payload: %w", err)
 		}

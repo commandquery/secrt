@@ -7,6 +7,7 @@ package main
 //
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/json"
 	"errors"
@@ -28,14 +29,21 @@ const (
 	VaultPlatform VaultType = "platform" // Platform vaule. Uses zalando/go-keyring.
 )
 
+type PublicKey struct {
+	Type  string `json:"type"`
+	Key   []byte `json:"key"`
+	Trust bool   `json:"trust"`
+}
+
 // Peer contains information about other users.
 type Peer struct {
-	Alias        string `json:"alias"`
-	BoxPublicKey []byte `json:"boxPublicKey"`
+	Alias      string      `json:"alias"`
+	PublicKeys []PublicKey `json:"publicKeys"`
+	//BoxPublicKey []byte `json:"boxPublicKey"`
 }
 
 // ConfigVersion is current default version of the configuration file.
-const ConfigVersion = 1
+const ConfigVersion = 2
 
 // Config represents the client configuration file.
 type Config struct {
@@ -45,6 +53,7 @@ type Config struct {
 
 	store    string // Location of secrets store
 	modified bool   // indicates that the config changed.
+	canSave  bool   // indicates that saving is OK
 }
 
 // StorageEnvelope is a concrete envelope around an abstract Vault interface.
@@ -80,7 +89,7 @@ type Endpoint struct {
 	ServerBoxKey []byte             `json:"serverBoxKey"` // Public key of this server
 	Vaults       []*StorageEnvelope `json:"vaults"`       // Storage for sensitive data such as private keys and server tokens.
 	BoxPublicKey []byte             `json:"boxPublicKey"` // Public key for the private key
-	Peers        map[string]*Peer   `json:"peers"`        // Contains info about other users
+	Peers        []*Peer            `json:"peers"`        // Contains info about other users
 
 	// Any newly-added peers are added to this list so we can display them on exit.
 	newPeers []*Peer
@@ -88,9 +97,12 @@ type Endpoint struct {
 
 // LoadClientConfig loads the secret configuration, if there is one.
 // Returns an empty object (with Stored == false) if no configuration exists.
+// We pass the bytes to a migration script which checks the version number and performs
+// a migration of the JSON to the latest standard. If necessary, we set modified=true
+// to write the latest version back.
 func LoadClientConfig(storeDirectory string) (*Config, error) {
 	storeFile := filepath.Join(storeDirectory, "secrt.json")
-	configJS, err := os.ReadFile(storeFile)
+	storedJS, err := os.ReadFile(storeFile)
 	if os.IsNotExist(err) {
 		// return an empty, configured object.
 		return &Config{
@@ -109,7 +121,12 @@ func LoadClientConfig(storeDirectory string) (*Config, error) {
 		return nil, err
 	}
 
-	config := Config{store: storeDirectory}
+	configJS, modified, err := Migrate(storedJS)
+	if err != nil {
+		return nil, fmt.Errorf("unable to upgrade config version: %w", err)
+	}
+
+	config := Config{store: storeDirectory, modified: modified}
 	err = config.Unmarshal(configJS)
 	if err != nil {
 		return nil, err
@@ -178,7 +195,7 @@ func (config *Config) atomicSave() error {
 // was loaded.
 func (config *Config) Save() error {
 
-	if !config.modified {
+	if !config.modified || !config.canSave {
 		return nil
 	}
 
@@ -270,7 +287,7 @@ func (config *Config) AddEndpoint(alias, endpointURL string, storeType VaultType
 		URL:          endpointURL,
 		Alias:        alias,
 		BoxPublicKey: public[:],
-		Peers:        make(map[string]*Peer),
+		Peers:        nil,
 	}
 
 	vault, err := NewVault(newEndpoint, storeType)
@@ -364,4 +381,25 @@ func (config *Config) Unmarshal(data []byte) error {
 	}
 
 	return nil
+}
+
+func (peer *Peer) GetPublicKey(keyType string, key []byte) *PublicKey {
+	for _, pk := range peer.PublicKeys {
+		if pk.Type == keyType && bytes.Equal(pk.Key, key) {
+			return &pk
+		}
+	}
+
+	return nil
+}
+
+// GetDefaultPublicKey currently returns the most recently used public key.
+// We might enable some other public key to be used later.
+func (peer *Peer) GetDefaultPublicKey(keyType string) *PublicKey {
+
+	if len(peer.PublicKeys) == 0 {
+		return nil
+	}
+
+	return &peer.PublicKeys[0]
 }

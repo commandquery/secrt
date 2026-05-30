@@ -84,6 +84,10 @@ func (c *Cache) Entries() ([]uuid.UUID, error) {
 	}
 
 	for _, cacheFile := range cacheEntries {
+		if cacheFile.Name() == "state.json" {
+			continue
+		}
+
 		id, err := uuid.Parse(cacheFile.Name())
 		if err != nil {
 			_, _ = fmt.Fprintln(os.Stderr, "unexpected file in cache directory:", cacheFile.Name())
@@ -336,8 +340,13 @@ func (c *Cache) GetCleartext(msgID uuid.UUID) (*Cleartext, error) {
 		return nil, fmt.Errorf("unable to get peer %s: %w", claims.Alias, err)
 	}
 
-	if !bytes.Equal(peer.BoxPublicKey, claims.BoxPublicKey) {
-		return nil, fmt.Errorf("message claim does not match public key")
+	pk := peer.GetPublicKey("box", claims.BoxPublicKey)
+	if pk == nil {
+		return nil, fmt.Errorf("message claim does not match any key for peer %s", claims.Alias)
+	}
+
+	if !pk.Trust {
+		return nil, fmt.Errorf("public key for peer is not trusted")
 	}
 
 	// Verify that the claim contains hashes that match the actual payload and metadata.

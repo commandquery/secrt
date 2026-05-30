@@ -1,5 +1,22 @@
 # not-so-secret TODO
 
+- [ ] how to deal with public key changes?
+  - [X] make it possible for a peer to have multiple public keys
+  - [X] error out if public key for a peer on a message doesn't match the cached one.
+  - [ ] test: re-enrol and existing peer, send a message and receive it
+    - [ ] this will need some mechanism to trust new peer keys - could be as simple as "secrt peer trust user@domain"
+  - [ ] need config migration tests
+
+## Secret Sync
+
+- the idea is that each enrolled instance of secrt has both a "group" and an "instance" private key
+- the "instance" private key is unique to each instance, while the "group" key is shared among them.
+- we use the instance private key to share the group key.
+- senders use the group key to send messages to a peer
+- there can actually be any number of groups, but one of them is a "my devices" group
+- syncing is enabled by storing messages on the server for a long time. that's it!
+- how to migrate??
+
 ## Soft Launch Blockers / bugs
 - [ ] ability to pin/save secrets, esp. for use with `secrt run`
   - can't use metadata or claims, they are signed by the sender/server
@@ -24,9 +41,6 @@
 - [ ] need to print a message on enrolment explaining how to disable telemetry and stop accepting peers
 - [ ] display expiry time in secrets
 - [ ] endpoints might have multiple primary keys (senders) but shouldn't they share the peers list?
-- [ ] how to deal with public key changes? / re-enrolment?
-    - [ ] make it possible to reset a peer's public key
-    - [ ] error out if public key for a peer on a message doesn't match the cached one.
 - [ ] how to prevent unwanted messages / spam? block user until authorised? block/report address?
   - [ ] require invite from one side?
   - [ ] block lists?

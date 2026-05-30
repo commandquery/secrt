@@ -51,13 +51,24 @@ func (endpoint *Endpoint) Path(path ...string) string {
 	return endpoint.URL + urlPath.String()
 }
 
+func (endpoint *Endpoint) findPeer(alias string) *Peer {
+	if endpoint.Peers != nil {
+		for _, peer := range endpoint.Peers {
+			if peer.Alias == alias {
+				return peer
+			}
+		}
+	}
+
+	return nil
+}
+
 // GetPeer returns the public key for a given peer (if known).
 func (endpoint *Endpoint) GetPeer(config *Config, alias string) (*Peer, error) {
-	if endpoint.Peers != nil {
-		entry, ok := endpoint.Peers[alias]
-		if ok {
-			return entry, nil
-		}
+
+	peer := endpoint.findPeer(alias)
+	if peer != nil {
+		return peer, nil
 	}
 
 	if !config.Properties.AcceptPeers {
@@ -75,6 +86,11 @@ func (endpoint *Endpoint) GetPeer(config *Config, alias string) (*Peer, error) {
 
 func (endpoint *Endpoint) AddPeer(alias string) (*Peer, error) {
 
+	peer := endpoint.findPeer(alias)
+	if peer != nil {
+		return nil, fmt.Errorf("peer already exists: %s", alias)
+	}
+
 	peerReq := secrt.PeerRequest{Alias: alias}
 	var peerResp secrt.PeerResponse
 	if err := Call(endpoint, &peerReq, &peerResp, "GET", "peer"); err != nil {
@@ -89,12 +105,14 @@ func (endpoint *Endpoint) AddPeer(alias string) (*Peer, error) {
 		return nil, fmt.Errorf("received wrong peer id: %s (expected %s)", peerResp.Alias, alias)
 	}
 
-	peer := &Peer{
-		Alias:        alias,
-		BoxPublicKey: peerResp.BoxPublicKey,
+	peer = &Peer{
+		Alias: alias,
+		PublicKeys: []PublicKey{
+			{Type: "box", Key: peerResp.BoxPublicKey, Trust: true},
+		},
 	}
 
-	endpoint.Peers[alias] = peer
+	endpoint.Peers = append(endpoint.Peers, peer)
 	endpoint.newPeers = append(endpoint.newPeers, peer)
 	return peer, nil
 }
@@ -247,4 +265,28 @@ func (endpoint *Endpoint) GetChallenge() (*secrt.ChallengeRequest, error) {
 	}
 
 	return challenge, nil
+}
+
+func (endpoint *Endpoint) DeletePeer(alias string) error {
+	if endpoint.Peers == nil {
+		return fmt.Errorf("no peers found")
+	}
+
+	var newPeers []*Peer
+	var found bool
+
+	for _, peer := range endpoint.Peers {
+		if peer.Alias == alias {
+			found = true
+		} else {
+			newPeers = append(newPeers, peer)
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("peer %s not found", alias)
+	}
+
+	endpoint.Peers = newPeers
+	return nil
 }

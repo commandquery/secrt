@@ -6,6 +6,7 @@ toolchain go1.24.2
 
 require (
 	github.com/google/uuid v1.6.0
+	github.com/itchyny/gojq v0.12.19
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/pgpkg/pgpkg v0.0.0-00010101000000-000000000000
@@ -20,6 +21,7 @@ require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/danieljoos/wincred v1.2.2 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
+	github.com/itchyny/timefmt-go v0.1.8 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect

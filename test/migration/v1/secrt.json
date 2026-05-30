@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "endpoints": [
+    {
+      "url": "http://localhost:8080/",
+      "alias": "alice@example.com",
+      "serverBoxKey": "hNYr9mdGnhMdOBBdgW7LHXLBB/Kw+nXPydQISbM8VHw=",
+      "vaults": [
+        {
+          "vaultType": "clear",
+          "properties": {
+            "values": {
+              "authToken": "1Fmy852iCbWN5+UGQmTU971H/l3fdVx4yB/aPNZVEZ9aJqa3+sr9t0SgOlk0dFHC1XR6HzWizQGYMqV8VOXvQ1jQsF+jHwdWXwxyPsYEyc/teR7B62yGW6zWrsER4P/uXaFu/lxKkX4Jvanebz7HzGvKqREf6AFn74dlLmSlOlGXHfsSGcv2wmLogFf/splJMHXmsrbI72g1NBU0unZN8QLugrfx18MKUHYDi8pATP6GpWCTKcWN/91JPLz2FGDR8IY=",
+              "boxPrivateKey": "z2IapnTOTT3V1VfcytVxUpD85+N6f6a0z4nCErgIfK0="
+            }
+          }
+        }
+      ],
+      "boxPublicKey": "HY2jy605LhQrAoH2fs5zTL7Gkp9JfZSvKGzcJZgOrCQ=",
+      "peers": {
+        "bob@example.com": {
+          "alias": "bob@example.com",
+          "boxPublicKey": "iKuExCSRpd/gIB4Z8UwWveLO4pofbgUibZrEiqBeFjU="
+        },
+        "charlie@example.com": {
+          "alias": "charlie@example.com",
+          "boxPublicKey": "jrbGGSgoal+QfS0TASIBea0ThuSGY/TG+Rekufcq/CU="
+        },
+        "denise@example.com": {
+          "alias": "denise@example.com",
+          "boxPublicKey": "TrHdkxQ6yNjBASZHpQPs63eg3ZsiZdejclqnIjMJwnI="
+        },
+        "ernie@example.com": {
+          "alias": "ernie@example.com",
+          "boxPublicKey": "JKrAyV51WVSUrPu29kYDR95rbSdsZOZPqdAira7Q9yw="
+        },
+        "harry@example.com": {
+          "alias": "harry@example.com",
+          "boxPublicKey": "mwdNkvikwa+0Nxud6T/4ErsRCS9FBlko3Z2PdtYxoU8="
+        }
+      }
+    }
+  ],
+  "properties": {
+    "defaultEndpoint": 0,
+    "acceptPeers": true,
+    "telemetry": true,
+    "cache": true
+  }
+}
