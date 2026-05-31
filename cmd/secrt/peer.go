@@ -8,12 +8,14 @@ import (
 
 func CmdPeer(config *Config, endpoint *Endpoint, args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: secrt peer {add | ls | rm}")
+		return fmt.Errorf("usage: secrt peer {add | trust | ls | rm}")
 	}
 
 	switch args[0] {
 	case "add":
 		return CmdPeerAdd(config, endpoint, args[1:])
+	case "trust":
+		return CmdPeerTrust(config, endpoint, args[1:])
 	case "rm":
 		return CmdPeerRm(config, endpoint, args[1:])
 	case "ls":
@@ -29,7 +31,22 @@ func CmdPeerAdd(config *Config, endpoint *Endpoint, args []string) error {
 	}
 
 	alias := args[0]
-	_, err := endpoint.AddPeer(alias)
+	_, err := endpoint.AddPeer(alias, false)
+	if err != nil {
+		return err
+	}
+
+	config.modified = true
+	return nil
+}
+
+func CmdPeerTrust(config *Config, endpoint *Endpoint, args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("usage: secrt peer trust {alias}")
+	}
+
+	alias := args[0]
+	_, err := endpoint.AddPeer(alias, true)
 	if err != nil {
 		return err
 	}

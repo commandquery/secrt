@@ -9,7 +9,7 @@ import (
 )
 
 func (server *SecretServer) handlePull(r *http.Request, pullRequest *secrt.PullRequest) (*secrt.PullResponse, error) {
-	peer, aerr := server.Authenticate(r)
+	session, aerr := server.Authenticate(r)
 	if aerr != nil {
 		return nil, aerr
 	}
@@ -17,9 +17,9 @@ func (server *SecretServer) handlePull(r *http.Request, pullRequest *secrt.PullR
 	// return messages in sequence order so that certain problems on the client side
 	// won't cause messages to be lost.
 	rows, err := PGXPool.Query(r.Context(),
-		`select message, seq, metadata, payload, claims from secrt.message where message.peer=$1 and message.seq > $2 order by message.seq`, peer.Peer, pullRequest.LastSequence)
+		`select message, seq, metadata, payload, claims from secrt.message where message.peer=$1 and message.seq > $2 order by message.seq`, session.Peer.Peer, pullRequest.LastSequence)
 	if err != nil {
-		return nil, jtp.InternalServerError(fmt.Errorf("unable to query inbox: %w", err))
+		return nil, jtp.InternalServerError(fmt.Errorf("unable to pull inbox: %w", err))
 	}
 
 	defer rows.Close()

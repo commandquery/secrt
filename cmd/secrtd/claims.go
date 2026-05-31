@@ -33,14 +33,14 @@ func (server *SecretServer) Encrypt(plaintext []byte, peerBoxKey []byte) ([]byte
 
 // MakeClaims returns a sealed set of claims, effectively a server-supplied signature over the message
 // that asserts a sender's identity.
-func (server *SecretServer) MakeClaims(msg *Message, sender *Peer, recipient *Peer) ([]byte, error) {
+func (server *SecretServer) MakeClaims(msg *Message, session *Session, recipient *Peer) ([]byte, error) {
 	payloadHash := sha256.Sum256(msg.Payload)
 	metadataHash := sha256.Sum256(msg.Metadata)
 
 	claim := &secrt.Claims{
 		Message:      msg.Message,
-		Alias:        sender.Alias,
-		BoxPublicKey: sender.PublicKey,
+		Alias:        session.Peer.Alias,
+		BoxPublicKey: session.PublicKey,
 		PayloadHash:  payloadHash[:],
 		MetadataHash: metadataHash[:],
 		Timestamp:    time.Now().Unix(),
@@ -51,7 +51,7 @@ func (server *SecretServer) MakeClaims(msg *Message, sender *Peer, recipient *Pe
 		return nil, fmt.Errorf("failed to marshal claims: %v", err)
 	}
 
-	sealed, err := server.Encrypt(claimBytes, recipient.PublicKey)
+	sealed, err := server.Encrypt(claimBytes, recipient.DefaultPublicKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt claims: %v", err)
 	}

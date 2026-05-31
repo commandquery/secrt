@@ -13,4 +13,6 @@ Migrations = [
     "schema/telemetry.sql",
     "schema/seq.sql",
     "schema/message@001.sql",
+    "schema/key.sql",
+    "schema/peer@001.sql",
 ]

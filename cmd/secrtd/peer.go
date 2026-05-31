@@ -14,10 +14,10 @@ import (
 // Peer is a user who's enrolled in a server instance.
 // Different peers can have the same alias if they're in different servers.
 type Peer struct {
-	Server    uuid.UUID
-	Peer      uuid.UUID
-	Alias     string
-	PublicKey []byte
+	Server           uuid.UUID
+	Peer             uuid.UUID
+	Alias            string
+	DefaultPublicKey []byte
 }
 
 func prefixFromHex(s string) (uint32, error) {
@@ -44,6 +44,6 @@ func (server *SecretServer) handleGetPeer(r *http.Request, req *secrt.PeerReques
 
 	return &secrt.PeerResponse{
 		Alias:        req.Alias,
-		BoxPublicKey: peer.PublicKey,
+		BoxPublicKey: peer.DefaultPublicKey,
 	}, nil
 }

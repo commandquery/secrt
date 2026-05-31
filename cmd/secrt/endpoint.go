@@ -75,7 +75,7 @@ func (endpoint *Endpoint) GetPeer(config *Config, alias string) (*Peer, error) {
 		return nil, ErrUnacceptablePeer
 	}
 
-	newPeer, err := endpoint.AddPeer(alias)
+	newPeer, err := endpoint.AddPeer(alias, false)
 	if err != nil {
 		return nil, fmt.Errorf("unable to add peer: %w", err)
 	}
@@ -84,11 +84,13 @@ func (endpoint *Endpoint) GetPeer(config *Config, alias string) (*Peer, error) {
 	return newPeer, nil
 }
 
-func (endpoint *Endpoint) AddPeer(alias string) (*Peer, error) {
+func (endpoint *Endpoint) AddPeer(alias string, addKey bool) (*Peer, error) {
 
-	peer := endpoint.findPeer(alias)
-	if peer != nil {
-		return nil, fmt.Errorf("peer already exists: %s", alias)
+	existingPeer := endpoint.findPeer(alias)
+	if existingPeer != nil {
+		if !addKey {
+			return nil, fmt.Errorf("peer already exists: %s", alias)
+		}
 	}
 
 	peerReq := secrt.PeerRequest{Alias: alias}
@@ -105,16 +107,31 @@ func (endpoint *Endpoint) AddPeer(alias string) (*Peer, error) {
 		return nil, fmt.Errorf("received wrong peer id: %s (expected %s)", peerResp.Alias, alias)
 	}
 
-	peer = &Peer{
-		Alias: alias,
-		PublicKeys: []PublicKey{
-			{Type: "box", Key: peerResp.BoxPublicKey, Trust: true},
-		},
+	var newPeer *Peer
+
+	// If there's an existing peer and we got to this point, it means we want
+	// to add a new public key for this peer.
+	if existingPeer != nil {
+		// defer deleteing any old peer until we know the new peer will work.
+		if err := endpoint.DeletePeer(alias); err != nil {
+			return nil, fmt.Errorf("unable to replace peer: %w", err)
+		}
+
+		newPeer = existingPeer
+		newPeer.PublicKeys = append(newPeer.PublicKeys,
+			PublicKey{Type: "box", Key: peerResp.BoxPublicKey, Trust: true})
+	} else {
+		newPeer = &Peer{
+			Alias: alias,
+			PublicKeys: []PublicKey{
+				{Type: "box", Key: peerResp.BoxPublicKey, Trust: true},
+			},
+		}
 	}
 
-	endpoint.Peers = append(endpoint.Peers, peer)
-	endpoint.newPeers = append(endpoint.newPeers, peer)
-	return peer, nil
+	endpoint.Peers = append(endpoint.Peers, newPeer)
+	endpoint.newPeers = append(endpoint.newPeers, newPeer)
+	return newPeer, nil
 }
 
 func (endpoint *Endpoint) PrintNewPeers() {

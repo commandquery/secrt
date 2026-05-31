@@ -11,7 +11,7 @@ create or replace
         _peer_id uuid;
         _peer secrt.peer;
         _public_key bytea = gen_random_bytes(32);
---         _activation secrt.activation;
+        _default_key bytea;
         _server uuid = gen_random_uuid();
 
     begin
@@ -29,7 +29,9 @@ create or replace
             raise exception 'activated peer not found';
         end if;
 
-        perform ??(_peer.public_box_key = _public_key);
+        select public_key into _default_key from secrt.key where key=_peer.default_key;
+
+        perform ??(_default_key = _public_key);
         perform ??(_peer.peer = _peer_id);
         perform ??(_peer.server = _server);
 

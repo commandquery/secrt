@@ -37,9 +37,9 @@ createdb $PGDATABASE
 
 # Enrol a user via the token file mechanism.
 # Server puts the tokens and codes into a file that we use to activate the enrolment.
-# usage: enrol file.json peerid store
+# usage: enrol configDir peerid vaultType args
 enrol() {
-  secrt -c $1 enrol ${3:+--store=$3} $2 http://localhost:8080/
+  secrt -c "$1" enrol ${3:+--store=$3} $4 "$2" http://localhost:8080/
   read -r token code < <(tail -1 $SECRT_ENROL_FILE)
   secrt -c $1 activate "$token" "$code"
 }
@@ -286,7 +286,10 @@ if secrt -c stores/guy enrol guy@example.com http://localhost:8080/ 2> /dev/null
 fi
 
 #
-# Attempt to enrol on same SECRTD with different peer ID
+# Attempt to enrol on same server with different peer ID
+# This tests that we can have two peer IDs for the same endpoint.
+# This creates a new default endpoint.
+# TODO: check that the new enrolment added a new endpoint.
 #
 echo "--- secrt same SECRTD different peer"
 enrol stores/guy harry@example.com clear
@@ -297,13 +300,6 @@ enrol stores/guy harry@example.com clear
 echo "--- use different enrolment"
 echo "hello" | secrt -c stores/guy send alice@example.com
 secrt -c stores/alice ls
-
-#
-# Attempt to double enrol with --force
-# FIXME: this won't work until we have a reenrolment flow on the SECRTD side
-#
-#echo "--- secrt double enrol --force"
-#secrt -c stores/guy enrol --force guy@example.com http://localhost:8080/
 
 #
 # Test "secrt run" - with an environment
@@ -325,3 +321,47 @@ secrt -c stores/joe run -stdin $STDINID cat
 #
 echo "--- secrt run env+stdin"
 secrt -c stores/joe run -env $ENVID -stdin $STDINID sh -c "env; cat"
+
+#
+# Test re-enrolment --
+
+# ----------- PRIVATE KEY REPLACEMENT -----------
+#
+# Attempt to double enrol with --force.
+# (this is possible and is expected to work)
+# This effectively replaces the entire endpoint entry
+# for this peer alias.
+#
+echo "--- secrt double enrol --force"
+
+# first, establish trust with iris.
+enrol stores/iris iris@example.com clear
+OLDKEY=$(echo "old key" | secrt -c stores/iris send alice@example.com)
+secrt -c stores/alice ls
+
+# next, re-enrol iris.
+enrol stores/iris iris@example.com clear --force
+
+# Send a message from the new account to alice
+NEWKEY=$(echo "new key" | secrt -c stores/iris send alice@example.com)
+
+# This should fail because we have Iris's old public key.
+if secrt -c stores/alice ls 2> /dev/null; then
+  echo "secrt ls should have failed!" 2>&1
+  exit 1
+fi
+
+#cat stores/alice/secrt.json
+
+# Adding a peer replaces the existing public key with a new one.
+secrt -c stores/alice peer trust iris@example.com
+
+# ls should now work.
+secrt -c stores/alice ls
+
+# can we still read old messages?
+secrt -c stores/alice get $OLDKEY
+secrt -c stores/alice get $NEWKEY
+
+secrt -c stores/alice meta $OLDKEY
+secrt -c stores/alice meta $NEWKEY

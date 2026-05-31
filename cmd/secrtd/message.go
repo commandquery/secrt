@@ -27,7 +27,7 @@ type Message struct {
 }
 
 func (server *SecretServer) handlePostMessage(r *http.Request, envelope *secrt.SendRequest) (*secrt.SendResponse, error) {
-	sender, aerr := server.Authenticate(r)
+	session, aerr := server.Authenticate(r)
 	if aerr != nil {
 		return nil, aerr
 	}
@@ -40,20 +40,20 @@ func (server *SecretServer) handlePostMessage(r *http.Request, envelope *secrt.S
 	newMessage := &Message{
 		Recipient:   recipient.Peer,
 		Message:     uuid.New(),
-		SenderAlias: sender.Alias,
+		SenderAlias: session.Peer.Alias,
 		Received:    time.Now(),
 		Metadata:    envelope.Metadata,
 		Payload:     envelope.Payload,
 	}
 
 	var err error
-	newMessage.Claims, err = server.MakeClaims(newMessage, sender, recipient)
+	newMessage.Claims, err = server.MakeClaims(newMessage, session, recipient)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create message claims: %w", err)
 	}
 
 	_, err = PGXPool.Exec(r.Context(), "select secrt.send($1, $2, $3, $4, $5, $6, $7)",
-		newMessage.Message, sender.Peer, recipient.Peer, recipient.Server, envelope.Metadata, envelope.Payload, newMessage.Claims)
+		newMessage.Message, session.Peer.Peer, recipient.Peer, recipient.Server, envelope.Metadata, envelope.Payload, newMessage.Claims)
 	if err != nil {
 		return nil, jtp.InternalServerError(fmt.Errorf("unable to insert message: %w", err))
 	}
@@ -67,7 +67,7 @@ func (server *SecretServer) handlePostMessage(r *http.Request, envelope *secrt.S
 }
 
 func (server *SecretServer) handleGetMessage(r *http.Request, _ *jtp.None) (*secrt.Message, error) {
-	peer, aerr := server.Authenticate(r)
+	session, aerr := server.Authenticate(r)
 	if aerr != nil {
 		return nil, aerr
 	}
@@ -77,7 +77,7 @@ func (server *SecretServer) handleGetMessage(r *http.Request, _ *jtp.None) (*sec
 		return nil, jtp.BadRequestError(fmt.Errorf("invalid message id"))
 	}
 
-	msg, err := GetMessage(peer, id)
+	msg, err := GetMessage(session.Peer, id)
 	if err != nil {
 		if errors.Is(err, ErrUnknownMessageID) {
 			return nil, jtp.NotFoundError(err)
@@ -97,7 +97,7 @@ func (server *SecretServer) handleGetMessage(r *http.Request, _ *jtp.None) (*sec
 }
 
 func (server *SecretServer) handleDeleteMessage(r *http.Request, _ *jtp.None) (*jtp.None, error) {
-	peer, aerr := server.Authenticate(r)
+	session, aerr := server.Authenticate(r)
 	if aerr != nil {
 		return nil, aerr
 	}
@@ -107,7 +107,7 @@ func (server *SecretServer) handleDeleteMessage(r *http.Request, _ *jtp.None) (*
 		return nil, jtp.BadRequestError(fmt.Errorf("invalid message id"))
 	}
 
-	msg, err := GetMessage(peer, id)
+	msg, err := GetMessage(session.Peer, id)
 	if err != nil {
 		if errors.Is(err, ErrUnknownMessageID) {
 			return nil, jtp.NotFoundError(err)

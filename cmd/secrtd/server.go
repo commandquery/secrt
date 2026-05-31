@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/base64"
@@ -39,6 +38,11 @@ type AuthenticationToken struct {
 	Peer      uuid.UUID `json:"peer"`
 	Alias     string    `json:"alias"`
 	PublicKey []byte    `json:"publicKey"`
+}
+
+type Session struct {
+	Peer      *Peer  // The peer associated with this session
+	PublicKey []byte // The public key used to authenticate with this session.
 }
 
 // NewSecretServer returns a new SecretServer with a unique private and public key.
@@ -118,8 +122,8 @@ func (server *SecretServer) GetPeer(alias string) (*Peer, bool) {
 		Alias:  alias,
 	}
 
-	row := PGXPool.QueryRow(ctx, "select peer, public_box_key from secrt.peer where server=$1 and alias=$2", server.Server, alias)
-	err := row.Scan(&peer.Peer, &peer.PublicKey)
+	row := PGXPool.QueryRow(ctx, "select peer, public_key from secrt.peer join secrt.key using (peer) where key.key = peer.default_key and server=$1 and alias=$2", server.Server, alias)
+	err := row.Scan(&peer.Peer, &peer.DefaultPublicKey)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, false
@@ -131,7 +135,20 @@ func (server *SecretServer) GetPeer(alias string) (*Peer, bool) {
 	return &peer, true
 }
 
-func (server *SecretServer) Authenticate(r *http.Request) (*Peer, *jtp.HTTPError) {
+func (server *SecretServer) HasPublicKey(peer uuid.UUID, keyType string, publicKey []byte) error {
+	ctx := context.Background()
+
+	var exists bool
+	row := PGXPool.QueryRow(ctx, "select true from secrt.key where peer=$1 and type=$2 and public_key=$3", peer, keyType, publicKey)
+	err := row.Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("could not find public key for peer %s: %w", peer.String(), err)
+	}
+
+	return nil
+}
+
+func (server *SecretServer) Authenticate(r *http.Request) (*Session, *jtp.HTTPError) {
 
 	token := r.Header.Get("Authorization")
 	if token == "" {
@@ -164,9 +181,13 @@ func (server *SecretServer) Authenticate(r *http.Request) (*Peer, *jtp.HTTPError
 		return nil, jtp.UnauthorizedError(fmt.Errorf("unknown peer %q", authToken.Alias))
 	}
 
-	if !bytes.Equal(peer.PublicKey, authToken.PublicKey) {
-		return nil, jtp.UnauthorizedError(fmt.Errorf("invalid token public key"))
+	err = server.HasPublicKey(peer.Peer, "box", authToken.PublicKey)
+	if err != nil {
+		return nil, jtp.UnauthorizedError(err)
 	}
 
-	return peer, nil
+	return &Session{
+		Peer:      peer,
+		PublicKey: authToken.PublicKey,
+	}, nil
 }

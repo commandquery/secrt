@@ -1,11 +1,10 @@
 # not-so-secret TODO
 
-- [ ] how to deal with public key changes?
-  - [X] make it possible for a peer to have multiple public keys
-  - [X] error out if public key for a peer on a message doesn't match the cached one.
-  - [ ] test: re-enrol and existing peer, send a message and receive it
-    - [ ] this will need some mechanism to trust new peer keys - could be as simple as "secrt peer trust user@domain"
-  - [ ] need config migration tests
+- [ ] need to clean up the work flow for key regeneration
+  - [ ] how does the workflow work when a user has changed their key? we need to prompt the user to use "secrt trust"
+  - [ ] "secrt enrol" should have a guard or warning against accidental recreation?
+  - [ ] adding a new account to an existing peer should be different from re-enroling?
+- [ ] move to codeberg?
 
 ## Secret Sync
 
@@ -252,3 +251,12 @@
 - [X] secrt ls doesn't display the cache entry in my own cache!
 - [X] implement a cache as the top-level primitive in the server
 - [X] implement cache.pull() on client and server
+- [X] how to deal with public key changes?
+  - [X] make it possible for a peer to have multiple public keys
+  - [X] error out if public key for a peer on a message doesn't match the cached one.
+  - [ ] restructure server:
+    - [X] multiple public keys per peer
+    - [X] actual public key used must be sent with the message and validated on the client
+  - [X] test: re-enrol an existing peer, send a message and receive it
+    - [X] this will need some mechanism to trust new peer keys - could be as simple as "secrt peer trust user@domain"
+  - [X] need config migration tests

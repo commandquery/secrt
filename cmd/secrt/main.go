@@ -118,6 +118,9 @@ func main() {
 			err = config.Save()
 		}
 
+	case "meta":
+		err = CmdMeta(cache, args)
+
 	case "peer":
 		err = CmdPeer(config, endpoint, args)
 		if err == nil {

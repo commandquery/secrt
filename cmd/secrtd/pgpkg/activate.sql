@@ -11,6 +11,7 @@ create or replace
         _server secrt.server;
         _policy uuid;
         _pool uuid;
+        _key uuid = gen_random_uuid();
         _pools uuid[];
     begin
         -- quick purge of old activation tokens
@@ -20,11 +21,18 @@ create or replace
             raise exception 'activation token not found';
         end if;
 
-        perform 1 from secrt.peer where server=_activation.server and peer.alias=_activation.alias;
+        select peer into _peer from secrt.peer where server=_activation.server and peer.alias=_activation.alias;
         if found then
-            raise exception 'peer is already activated';
-        end if;
+            -- this is a new key enrolment for an existing peer
+            insert into secrt.key (key, public_key, type, peer)
+                values (_key, _activation.public_box_key, 'box', _peer);
 
+            update secrt.peer set default_key = _key where peer=_peer;
+
+            _alias = _activation.alias;
+            _public_key = _activation.public_box_key;
+            return;
+        end if;
 
         --
         -- Assign and/or create pools based on the server configuration.
@@ -39,9 +47,12 @@ create or replace
             end loop;
         end if;
 
-        insert into secrt.peer (server, peer, alias, pools, public_box_key)
-            values (_activation.server, DEFAULT, _activation.alias, array[_pool], _activation.public_box_key)
+        insert into secrt.peer (server, peer, alias, pools, default_key)
+            values (_activation.server, DEFAULT, _activation.alias, array[_pool], _key)
             returning peer into _peer;
+
+        insert into secrt.key (key, public_key, type, peer)
+            values (_key, _activation.public_box_key, 'box', _peer);
 
         _alias = _activation.alias;
         _public_key = _activation.public_box_key;
